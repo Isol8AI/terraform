@@ -1,0 +1,169 @@
+# =============================================================================
+# EC2 Module - Nitro Enclave Instances
+# =============================================================================
+# Creates EC2 instances with Nitro Enclave support for secure processing.
+# Uses Auto Scaling Group for high availability and rolling deployments.
+# =============================================================================
+
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Security Group
+# -----------------------------------------------------------------------------
+resource "aws_security_group" "ec2" {
+  name        = "${var.project}-${var.environment}-ec2-sg"
+  description = "Security group for EC2 instances"
+  vpc_id      = var.vpc_id
+
+  # Allow inbound from ALB only
+  ingress {
+    description     = "HTTP from ALB"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [var.alb_security_group_id]
+  }
+
+  # Allow all outbound (for HuggingFace API, etc.)
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project}-${var.environment}-ec2-sg"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Launch Template
+# -----------------------------------------------------------------------------
+resource "aws_launch_template" "main" {
+  name_prefix   = "${var.project}-${var.environment}-"
+  image_id      = data.aws_ami.amazon_linux_2.id
+  instance_type = var.instance_type
+
+  # IAM instance profile
+  iam_instance_profile {
+    name = var.instance_profile_name
+  }
+
+  # Enable Nitro Enclaves
+  enclave_options {
+    enabled = true
+  }
+
+  # Network configuration
+  network_interfaces {
+    associate_public_ip_address = false
+    security_groups             = [aws_security_group.ec2.id]
+  }
+
+  # Root volume
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp3"
+      delete_on_termination = true
+      encrypted             = true
+    }
+  }
+
+  # User data script
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    project            = var.project
+    environment        = var.environment
+    secrets_arn_prefix = var.secrets_arn_prefix
+    frontend_url       = var.frontend_url
+  }))
+
+  # Metadata options (IMDSv2 required for security)
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name    = "${var.project}-${var.environment}-instance"
+      Project = var.project
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Auto Scaling Group
+# -----------------------------------------------------------------------------
+resource "aws_autoscaling_group" "main" {
+  name                = "${var.project}-${var.environment}-asg"
+  vpc_zone_identifier = var.subnet_ids
+  target_group_arns   = [var.target_group_arn]
+
+  min_size         = var.min_count
+  max_size         = var.max_count
+  desired_capacity = var.desired_count
+
+  # Health check
+  health_check_type         = "ELB"
+  health_check_grace_period = 300
+
+  # Launch template
+  launch_template {
+    id      = aws_launch_template.main.id
+    version = "$Latest"
+  }
+
+  # Instance refresh for rolling deployments
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "${var.project}-${var.environment}-instance"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Project"
+    value               = var.project
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Environment"
+    value               = var.environment
+    propagate_at_launch = true
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}

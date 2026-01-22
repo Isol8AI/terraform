@@ -1,0 +1,135 @@
+#!/bin/bash
+# =============================================================================
+# EC2 User Data Script - Freebird Backend with Nitro Enclave
+# =============================================================================
+set -euo pipefail
+
+# Variables from Terraform
+PROJECT="${project}"
+ENVIRONMENT="${environment}"
+SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
+FRONTEND_URL="${frontend_url}"
+
+# Logging
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+echo "Starting Freebird backend setup..."
+
+# -----------------------------------------------------------------------------
+# Install dependencies
+# -----------------------------------------------------------------------------
+yum update -y
+amazon-linux-extras install docker -y
+yum install -y aws-cli jq
+
+# Start Docker
+systemctl start docker
+systemctl enable docker
+
+# Install Nitro CLI
+amazon-linux-extras install aws-nitro-enclaves-cli -y
+yum install -y aws-nitro-enclaves-cli-devel
+
+# Configure enclave allocator
+cat > /etc/nitro_enclaves/allocator.yaml << 'EOF'
+---
+# 2GB memory for enclave (adjust based on model requirements)
+memory_mib: 2048
+# 2 CPUs for enclave
+cpu_count: 2
+EOF
+
+# Start Nitro Enclave allocator
+systemctl start nitro-enclaves-allocator
+systemctl enable nitro-enclaves-allocator
+
+# Add ec2-user to docker and ne groups
+usermod -aG docker ec2-user
+usermod -aG ne ec2-user
+
+# -----------------------------------------------------------------------------
+# Fetch secrets from Secrets Manager
+# -----------------------------------------------------------------------------
+echo "Fetching secrets..."
+
+# Get the AWS region
+REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
+
+# Fetch secrets
+DATABASE_URL=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}database_url" \
+    --query 'SecretString' --output text)
+
+HUGGINGFACE_TOKEN=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}huggingface_token" \
+    --query 'SecretString' --output text)
+
+CLERK_ISSUER=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}clerk_issuer" \
+    --query 'SecretString' --output text)
+
+CLERK_WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}clerk_webhook_secret" \
+    --query 'SecretString' --output text)
+
+# -----------------------------------------------------------------------------
+# Create environment file
+# -----------------------------------------------------------------------------
+cat > /home/ec2-user/.env << EOF
+DATABASE_URL=$DATABASE_URL
+HUGGINGFACE_TOKEN=$HUGGINGFACE_TOKEN
+CLERK_ISSUER=$CLERK_ISSUER
+CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
+CORS_ORIGINS=$FRONTEND_URL
+DEBUG=false
+ENCLAVE_MODE=mock
+EOF
+
+chmod 600 /home/ec2-user/.env
+chown ec2-user:ec2-user /home/ec2-user/.env
+
+# -----------------------------------------------------------------------------
+# Login to ECR and pull image
+# -----------------------------------------------------------------------------
+echo "Pulling container image..."
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ECR_REPO="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$PROJECT-backend"
+
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR_REPO"
+docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
+
+# -----------------------------------------------------------------------------
+# Start the application
+# -----------------------------------------------------------------------------
+echo "Starting application..."
+
+# Create systemd service
+cat > /etc/systemd/system/freebird.service << EOF
+[Unit]
+Description=Freebird Backend
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=/usr/bin/docker run --rm \
+    --name freebird \
+    --env-file /home/ec2-user/.env \
+    -p 8000:8000 \
+    $ECR_REPO:latest
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload and start service
+systemctl daemon-reload
+systemctl enable freebird
+systemctl start freebird
+
+echo "Freebird backend setup complete!"

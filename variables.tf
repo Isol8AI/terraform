@@ -1,0 +1,140 @@
+# =============================================================================
+# Freebird Infrastructure - Variables
+# =============================================================================
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod"
+  }
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "availability_zones" {
+  description = "List of availability zones to use"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b"]
+}
+
+# -----------------------------------------------------------------------------
+# EC2 Configuration
+# -----------------------------------------------------------------------------
+
+variable "ec2_instance_type" {
+  description = "EC2 instance type (must support Nitro Enclaves)"
+  type        = string
+  default     = "m5.xlarge" # Nitro Enclave compatible
+
+  validation {
+    # Only certain instance types support Nitro Enclaves
+    condition = contains([
+      "m5.xlarge", "m5.2xlarge", "m5.4xlarge",
+      "c5.xlarge", "c5.2xlarge", "c5.4xlarge",
+      "r5.xlarge", "r5.2xlarge", "r5.4xlarge",
+      "m5a.xlarge", "m5a.2xlarge", "m5a.4xlarge",
+    ], var.ec2_instance_type)
+    error_message = "Instance type must support Nitro Enclaves"
+  }
+}
+
+variable "ec2_desired_count" {
+  description = "Desired number of EC2 instances"
+  type        = number
+  default     = 1
+}
+
+variable "ec2_min_count" {
+  description = "Minimum number of EC2 instances"
+  type        = number
+  default     = 1
+}
+
+variable "ec2_max_count" {
+  description = "Maximum number of EC2 instances"
+  type        = number
+  default     = 3
+}
+
+# -----------------------------------------------------------------------------
+# Application Configuration
+# -----------------------------------------------------------------------------
+
+variable "domain_name" {
+  description = "Domain name for the API (e.g., api-dev.isol8.co)"
+  type        = string
+}
+
+variable "root_domain" {
+  description = "Root domain for Route53 (e.g., isol8.co)"
+  type        = string
+  default     = "isol8.co"
+}
+
+variable "frontend_url" {
+  description = "Frontend URL for CORS (e.g., https://isol8.co)"
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
+# Secrets (passed via environment variables, not in tfvars)
+# -----------------------------------------------------------------------------
+
+variable "supabase_connection_string" {
+  description = "Supabase PostgreSQL connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "huggingface_token" {
+  description = "HuggingFace API token"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_issuer" {
+  description = "Clerk issuer URL"
+  type        = string
+}
+
+variable "clerk_secret_key" {
+  description = "Clerk secret key for server-side API calls"
+  type        = string
+  sensitive   = true
+}
+
+variable "clerk_webhook_secret" {
+  description = "Clerk webhook signing secret (optional, only needed if using Clerk webhooks)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# GitHub Actions OIDC (for CI/CD)
+# -----------------------------------------------------------------------------
+
+variable "github_org" {
+  description = "GitHub organization name"
+  type        = string
+  default     = ""
+}
+
+variable "github_repo" {
+  description = "GitHub repository name"
+  type        = string
+  default     = ""
+}
