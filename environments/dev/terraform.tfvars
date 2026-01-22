@@ -18,7 +18,7 @@ ec2_max_count     = 2
 # Domain
 domain_name  = "api-dev.isol8.co"
 root_domain  = "isol8.co"
-frontend_url = "http://localhost:3000"
+frontend_url = "https://frontend-pink-nine-76.vercel.app"
 
 # Clerk
 clerk_issuer = "https://up-moth-55.clerk.accounts.dev"
