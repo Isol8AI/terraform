@@ -31,3 +31,8 @@ output "https_listener_arn" {
   description = "HTTPS listener ARN (for API Gateway integration)"
   value       = var.enable_https ? aws_lb_listener.https[0].arn : null
 }
+
+output "http_listener_arn" {
+  description = "HTTP listener ARN (for API Gateway VPC Link integration)"
+  value       = aws_lb_listener.http.arn
+}

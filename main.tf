@@ -125,8 +125,8 @@ module "api_gateway" {
   environment = var.environment
   subnet_ids  = module.vpc.private_subnet_ids
 
-  # ALB integration
-  alb_listener_arn      = module.alb.https_listener_arn
+  # ALB integration (HTTP for internal VPC Link - API Gateway handles public TLS)
+  alb_listener_arn      = module.alb.http_listener_arn
   alb_security_group_id = module.alb.security_group_id
 
   # CORS - allow frontend origin
