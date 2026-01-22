@@ -215,13 +215,204 @@ resource "aws_iam_role_policy" "github_ec2" {
           "autoscaling:UpdateAutoScalingGroup",
           "autoscaling:StartInstanceRefresh",
           "autoscaling:DescribeInstanceRefreshes",
+          "autoscaling:DescribeAutoScalingGroups",
         ]
         Resource = "*"
-        Condition = {
-          StringEquals = {
-            "autoscaling:ResourceTag/Project" = var.project
-          }
-        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:SendCommand",
+          "ssm:GetCommandInvocation",
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# GitHub Actions Policy - Terraform state management (S3 + DynamoDB)
+resource "aws_iam_role_policy" "github_terraform" {
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
+
+  name = "terraform-state"
+  role = aws_iam_role.github_actions[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.project}-terraform-state-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::${var.project}-terraform-state-${data.aws_caller_identity.current.account_id}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+        ]
+        Resource = "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/${var.project}-terraform-locks"
+      }
+    ]
+  })
+}
+
+# GitHub Actions Policy - Full Terraform permissions for infrastructure management
+resource "aws_iam_role_policy" "github_terraform_infra" {
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
+
+  name = "terraform-infrastructure"
+  role = aws_iam_role.github_actions[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2Full"
+        Effect = "Allow"
+        Action = [
+          "ec2:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "VPCFull"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:ModifyVpcAttribute",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRouteTable",
+          "ec2:CreateRoute",
+          "ec2:DeleteRoute",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:CreateInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:AttachInternetGateway",
+          "ec2:DetachInternetGateway",
+          "ec2:CreateNatGateway",
+          "ec2:DeleteNatGateway",
+          "ec2:AllocateAddress",
+          "ec2:ReleaseAddress",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupEgress",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ELBFull"
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "APIGatewayFull"
+        Effect = "Allow"
+        Action = [
+          "apigateway:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "IAMPassRole"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+          "iam:GetRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:GetInstanceProfile",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:ListInstanceProfilesForRole",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "KMSFull"
+        Effect = "Allow"
+        Action = [
+          "kms:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "SecretsManagerFull"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ACMFull"
+        Effect = "Allow"
+        Action = [
+          "acm:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "Route53Full"
+        Effect = "Allow"
+        Action = [
+          "route53:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchLogsFull"
+        Effect = "Allow"
+        Action = [
+          "logs:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AutoScalingFull"
+        Effect = "Allow"
+        Action = [
+          "autoscaling:*",
+        ]
+        Resource = "*"
       }
     ]
   })
