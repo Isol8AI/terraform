@@ -133,8 +133,8 @@ variable "github_org" {
   default     = ""
 }
 
-variable "github_repo" {
-  description = "GitHub repository name"
-  type        = string
-  default     = ""
+variable "github_repos" {
+  description = "List of GitHub repository names to trust for CI/CD"
+  type        = list(string)
+  default     = []
 }

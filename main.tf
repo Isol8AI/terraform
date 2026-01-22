@@ -71,8 +71,8 @@ module "iam" {
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
 
   # GitHub OIDC for CI/CD
-  github_org  = var.github_org
-  github_repo = var.github_repo
+  github_org   = var.github_org
+  github_repos = var.github_repos
 }
 
 # -----------------------------------------------------------------------------

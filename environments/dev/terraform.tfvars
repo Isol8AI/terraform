@@ -23,9 +23,9 @@ frontend_url = "http://localhost:3000"
 # Clerk
 clerk_issuer = "https://up-moth-55.clerk.accounts.dev"
 
-# GitHub (for CI/CD OIDC)
-github_org  = "Isol8AI"
-github_repo = "backend"
+# GitHub (for CI/CD OIDC) - trust both backend and terraform repos
+github_org   = "Isol8AI"
+github_repos = ["backend", "terraform"]
 
 # =============================================================================
 # SENSITIVE VALUES - Set via environment variables, not in this file!

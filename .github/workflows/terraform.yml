@@ -35,7 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [dev, staging, prod]
+        # Only dev for now - add staging/prod when those environments are deployed
+        environment: [dev]
       fail-fast: false
 
     environment:

@@ -126,13 +126,13 @@ resource "aws_iam_role_policy" "ec2_ecr" {
 # GitHub Actions OIDC Provider (use existing one created by bootstrap)
 # -----------------------------------------------------------------------------
 data "aws_iam_openid_connect_provider" "github" {
-  count = var.github_org != "" && var.github_repo != "" ? 1 : 0
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
   url   = "https://token.actions.githubusercontent.com"
 }
 
 # GitHub Actions Role
 resource "aws_iam_role" "github_actions" {
-  count = var.github_org != "" && var.github_repo != "" ? 1 : 0
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
 
   name = "${var.project}-${var.environment}-github-actions"
 
@@ -150,7 +150,10 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
+            # Trust multiple repos from the same org
+            "token.actions.githubusercontent.com:sub" = [
+              for repo in var.github_repos : "repo:${var.github_org}/${repo}:*"
+            ]
           }
         }
       }
@@ -164,7 +167,7 @@ resource "aws_iam_role" "github_actions" {
 
 # GitHub Actions Policy - ECR push
 resource "aws_iam_role_policy" "github_ecr" {
-  count = var.github_org != "" && var.github_repo != "" ? 1 : 0
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
 
   name = "ecr-push"
   role = aws_iam_role.github_actions[0].id
@@ -198,7 +201,7 @@ resource "aws_iam_role_policy" "github_ecr" {
 
 # GitHub Actions Policy - EC2 deployment
 resource "aws_iam_role_policy" "github_ec2" {
-  count = var.github_org != "" && var.github_repo != "" ? 1 : 0
+  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
 
   name = "ec2-deploy"
   role = aws_iam_role.github_actions[0].id
