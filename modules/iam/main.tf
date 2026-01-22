@@ -122,6 +122,35 @@ resource "aws_iam_role_policy" "ec2_ecr" {
   })
 }
 
+# EC2 Policy - SSM access (for GitHub Actions deployments via SSM)
+resource "aws_iam_role_policy" "ec2_ssm" {
+  name = "ssm-access"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:UpdateInstanceInformation",
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel",
+          "ec2messages:AcknowledgeMessage",
+          "ec2messages:DeleteMessage",
+          "ec2messages:FailMessage",
+          "ec2messages:GetEndpoint",
+          "ec2messages:GetMessages",
+          "ec2messages:SendReply",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # -----------------------------------------------------------------------------
 # GitHub Actions OIDC Provider (use existing one created by bootstrap)
 # -----------------------------------------------------------------------------

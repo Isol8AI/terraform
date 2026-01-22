@@ -25,6 +25,10 @@ yum install -y aws-cli jq
 systemctl start docker
 systemctl enable docker
 
+# Start SSM agent (pre-installed on Amazon Linux 2, needed for GitHub Actions deployments)
+systemctl start amazon-ssm-agent
+systemctl enable amazon-ssm-agent
+
 # Install Nitro CLI
 amazon-linux-extras install aws-nitro-enclaves-cli -y
 yum install -y aws-nitro-enclaves-cli-devel
