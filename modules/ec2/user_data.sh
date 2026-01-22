@@ -9,6 +9,7 @@ PROJECT="${project}"
 ENVIRONMENT="${environment}"
 SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
 FRONTEND_URL="${frontend_url}"
+REGION="${aws_region}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -53,10 +54,7 @@ usermod -aG ne ec2-user
 # -----------------------------------------------------------------------------
 # Fetch secrets from Secrets Manager
 # -----------------------------------------------------------------------------
-echo "Fetching secrets..."
-
-# Get the AWS region
-REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
+echo "Fetching secrets from region: $REGION"
 
 # Fetch secrets
 DATABASE_URL=$(aws secretsmanager get-secret-value \

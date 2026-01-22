@@ -169,6 +169,7 @@ module "ec2" {
 
   project       = "freebird"
   environment   = var.environment
+  aws_region    = var.aws_region
   vpc_id        = module.vpc.vpc_id
   subnet_ids    = module.vpc.private_subnet_ids
   instance_type = var.ec2_instance_type
