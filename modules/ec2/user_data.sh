@@ -87,6 +87,7 @@ OM_PG_DSN=$(aws secretsmanager get-secret-value \
 # -----------------------------------------------------------------------------
 cat > /home/ec2-user/.env << EOF
 DATABASE_URL=$DATABASE_URL
+OM_METADATA_BACKEND=postgres
 OM_PG_DSN=$OM_PG_DSN
 HUGGINGFACE_TOKEN=$HUGGINGFACE_TOKEN
 CLERK_ISSUER=$CLERK_ISSUER
