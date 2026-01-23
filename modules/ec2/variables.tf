@@ -53,6 +53,11 @@ variable "secrets_arn_prefix" {
   type        = string
 }
 
+variable "frontend_url" {
+  description = "Frontend URL for CORS configuration"
+  type        = string
+}
+
 # Auto Scaling
 variable "desired_count" {
   description = "Desired number of instances"

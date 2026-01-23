@@ -204,4 +204,7 @@ module "ec2" {
 
   # Secrets
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
+
+  # CORS
+  frontend_url = var.frontend_url
 }

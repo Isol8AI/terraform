@@ -9,6 +9,7 @@ PROJECT="${project}"
 ENVIRONMENT="${environment}"
 SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
 REGION="${aws_region}"
+FRONTEND_URL="${frontend_url}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -90,6 +91,7 @@ OM_PG_DSN=$OM_PG_DSN
 HUGGINGFACE_TOKEN=$HUGGINGFACE_TOKEN
 CLERK_ISSUER=$CLERK_ISSUER
 CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
+CORS_ORIGINS=$FRONTEND_URL
 ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
 ENCLAVE_MODE=mock

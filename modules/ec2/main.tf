@@ -93,6 +93,7 @@ resource "aws_launch_template" "main" {
     environment        = var.environment
     secrets_arn_prefix = var.secrets_arn_prefix
     aws_region         = var.aws_region
+    frontend_url       = var.frontend_url
   }))
 
   # Metadata options (IMDSv2 required for security)
