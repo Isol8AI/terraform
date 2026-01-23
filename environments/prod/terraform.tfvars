@@ -9,10 +9,10 @@ aws_region  = "us-east-1"
 vpc_cidr           = "10.2.0.0/16"
 availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
 
-# EC2 (higher capacity for production)
+# EC2 (reduced to 1 instance due to vCPU quota limit of 16)
 ec2_instance_type = "m5.xlarge"
-ec2_desired_count = 2
-ec2_min_count     = 2
+ec2_desired_count = 1
+ec2_min_count     = 1
 ec2_max_count     = 6
 
 # Domain
