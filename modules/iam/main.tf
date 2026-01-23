@@ -94,7 +94,7 @@ resource "aws_iam_role_policy" "ec2_logs" {
           "logs:CreateLogStream",
           "logs:PutLogEvents",
         ]
-        Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/freebird/*"
+        Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/isol8/*"
       }
     ]
   })

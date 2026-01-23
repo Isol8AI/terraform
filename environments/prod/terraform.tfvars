@@ -1,5 +1,5 @@
 # =============================================================================
-# Production Environment Configuration
+# Production Environment Configuration (Isol8)
 # =============================================================================
 
 environment = "prod"
@@ -15,13 +15,14 @@ ec2_desired_count = 2
 ec2_min_count     = 2
 ec2_max_count     = 6
 
-# Domain (update with your domain)
-domain_name  = "api.freebird.example.com"
-frontend_url = "https://freebird.example.com"
+# Domain
+domain_name  = "api.isol8.co"
+root_domain  = "isol8.co"
+frontend_url = "https://app.isol8.co"
 
-# Clerk (update with your values)
-clerk_issuer = "https://your-clerk-domain.clerk.accounts.dev"
+# Clerk (production Clerk with custom domain)
+clerk_issuer = "https://clerk.isol8.co"
 
 # GitHub (for CI/CD OIDC)
-github_org  = "your-org"
-github_repo = "freebird"
+github_org   = "Isol8AI"
+github_repos = ["backend", "terraform"]

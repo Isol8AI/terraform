@@ -92,7 +92,6 @@ resource "aws_launch_template" "main" {
     project            = var.project
     environment        = var.environment
     secrets_arn_prefix = var.secrets_arn_prefix
-    frontend_url       = var.frontend_url
     aws_region         = var.aws_region
   }))
 

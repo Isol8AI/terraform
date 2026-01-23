@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# EC2 User Data Script - Freebird Backend with Nitro Enclave
+# EC2 User Data Script - Isol8 Backend with Nitro Enclave
 # =============================================================================
 set -euo pipefail
 
@@ -8,12 +8,11 @@ set -euo pipefail
 PROJECT="${project}"
 ENVIRONMENT="${environment}"
 SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
-FRONTEND_URL="${frontend_url}"
 REGION="${aws_region}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-echo "Starting Freebird backend setup..."
+echo "Starting Isol8 backend setup..."
 
 # -----------------------------------------------------------------------------
 # Install dependencies
@@ -77,15 +76,21 @@ CLERK_WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}clerk_webhook_secret" \
     --query 'SecretString' --output text)
 
+OM_PG_DSN=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}openmemory_url" \
+    --query 'SecretString' --output text)
+
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
 cat > /home/ec2-user/.env << EOF
 DATABASE_URL=$DATABASE_URL
+OM_PG_DSN=$OM_PG_DSN
 HUGGINGFACE_TOKEN=$HUGGINGFACE_TOKEN
 CLERK_ISSUER=$CLERK_ISSUER
 CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
-CORS_ORIGINS=$FRONTEND_URL
+ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
 ENCLAVE_MODE=mock
 EOF
@@ -109,9 +114,9 @@ docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
 echo "Starting application..."
 
 # Create systemd service
-cat > /etc/systemd/system/freebird.service << EOF
+cat > /etc/systemd/system/isol8.service << EOF
 [Unit]
-Description=Freebird Backend
+Description=Isol8 Backend
 After=docker.service
 Requires=docker.service
 
@@ -120,7 +125,7 @@ Type=simple
 Restart=always
 RestartSec=5
 ExecStart=/usr/bin/docker run --rm \
-    --name freebird \
+    --name isol8 \
     --env-file /home/ec2-user/.env \
     -p 8000:8000 \
     $ECR_REPO:latest
@@ -131,7 +136,7 @@ EOF
 
 # Reload and start service
 systemctl daemon-reload
-systemctl enable freebird
-systemctl start freebird
+systemctl enable isol8
+systemctl start isol8
 
-echo "Freebird backend setup complete!"
+echo "Isol8 backend setup complete!"

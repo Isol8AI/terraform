@@ -18,10 +18,10 @@ ec2_max_count     = 2
 # Domain
 domain_name  = "api-dev.isol8.co"
 root_domain  = "isol8.co"
-frontend_url = "https://frontend-pink-nine-76.vercel.app"
+frontend_url = "https://dev.isol8.co"
 
-# Clerk
-clerk_issuer = "https://up-moth-55.clerk.accounts.dev"
+# Clerk (using production Clerk with custom domain)
+clerk_issuer = "https://clerk.isol8.co"
 
 # GitHub (for CI/CD OIDC) - trust both backend and terraform repos
 github_org   = "Isol8AI"

@@ -17,7 +17,7 @@ data "aws_caller_identity" "current" {}
 # KMS Key
 # -----------------------------------------------------------------------------
 resource "aws_kms_key" "enclave" {
-  description             = "KMS key for Freebird enclave keypair encryption"
+  description             = "KMS key for Isol8 enclave keypair encryption"
   deletion_window_in_days = 30
   enable_key_rotation     = true
 

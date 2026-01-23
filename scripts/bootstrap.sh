@@ -14,10 +14,10 @@
 set -euo pipefail
 
 # Configuration
-AWS_PROFILE="freebird-admin"
+AWS_PROFILE="isol8-admin"
 AWS_REGION="us-east-1"
 AWS_ACCOUNT_ID="877352799272"
-PROJECT="freebird"
+PROJECT="isol8"
 
 # Resource names (S3 bucket includes account ID for global uniqueness)
 S3_BUCKET="${PROJECT}-terraform-state-${AWS_ACCOUNT_ID}"
@@ -25,7 +25,7 @@ DYNAMODB_TABLE="${PROJECT}-terraform-locks"
 ECR_REPO="${PROJECT}-backend"
 
 echo "============================================="
-echo "Freebird AWS Bootstrap"
+echo "Isol8 AWS Bootstrap"
 echo "============================================="
 echo "Profile: $AWS_PROFILE"
 echo "Region: $AWS_REGION"

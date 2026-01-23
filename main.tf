@@ -1,7 +1,7 @@
 # =============================================================================
-# Freebird Infrastructure - Main Configuration
+# Isol8 Infrastructure - Main Configuration
 # =============================================================================
-# This file wires together all modules for the Freebird backend infrastructure.
+# This file wires together all modules for the Isol8 backend infrastructure.
 #
 # Architecture:
 #   Vercel (Frontend) → API Gateway → ALB → EC2 (Nitro Enclave)
@@ -17,7 +17,7 @@
 module "vpc" {
   source = "./modules/vpc"
 
-  project            = "freebird"
+  project            = "isol8"
   environment        = var.environment
   vpc_cidr           = var.vpc_cidr
   availability_zones = var.availability_zones
@@ -29,7 +29,7 @@ module "vpc" {
 module "kms" {
   source = "./modules/kms"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   ec2_role_arn = module.iam.ec2_role_arn
 
@@ -42,16 +42,32 @@ module "kms" {
 # -----------------------------------------------------------------------------
 # Secrets Manager Module
 # -----------------------------------------------------------------------------
+# Database URL with schema per environment
+# Format: postgresql+asyncpg://...?options=-csearch_path%3D{env}
+locals {
+  # Append schema to connection string (URL-encoded: %3D is =)
+  # If connection string already has ?, append with &, otherwise add ?
+  db_has_query    = length(regexall("\\?", var.supabase_connection_string)) > 0
+  db_separator    = local.db_has_query ? "&" : "?"
+  database_url    = "${var.supabase_connection_string}${local.db_separator}options=-csearch_path%3D${var.environment}"
+
+  # OpenMemory uses standard psycopg format (without +asyncpg)
+  # Convert asyncpg URL to standard PostgreSQL URL for OpenMemory
+  openmemory_base = replace(var.supabase_connection_string, "postgresql+asyncpg://", "postgresql://")
+  openmemory_url  = "${local.openmemory_base}${local.db_separator}options=-csearch_path%3D${var.environment}"
+}
+
 module "secrets" {
   source = "./modules/secrets"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   kms_key_arn = module.kms.key_arn
 
   # Secrets to store (encrypted with KMS key)
   secrets = {
-    database_url         = var.supabase_connection_string
+    database_url         = local.database_url
+    openmemory_url       = local.openmemory_url
     huggingface_token    = var.huggingface_token
     clerk_issuer         = var.clerk_issuer
     clerk_secret_key     = var.clerk_secret_key
@@ -65,7 +81,7 @@ module "secrets" {
 module "iam" {
   source = "./modules/iam"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   kms_key_arn = module.kms.key_arn
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
@@ -81,7 +97,7 @@ module "iam" {
 module "acm" {
   source = "./modules/acm"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   domain_name = var.domain_name
   root_domain = var.root_domain
@@ -96,7 +112,7 @@ module "acm" {
 module "alb" {
   source = "./modules/alb"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   vpc_id      = module.vpc.vpc_id
   vpc_cidr    = module.vpc.vpc_cidr
@@ -121,7 +137,7 @@ module "alb" {
 module "api_gateway" {
   source = "./modules/api-gateway"
 
-  project     = "freebird"
+  project     = "isol8"
   environment = var.environment
   subnet_ids  = module.vpc.private_subnet_ids
 
@@ -167,7 +183,7 @@ resource "aws_route53_record" "api" {
 module "ec2" {
   source = "./modules/ec2"
 
-  project       = "freebird"
+  project       = "isol8"
   environment   = var.environment
   aws_region    = var.aws_region
   vpc_id        = module.vpc.vpc_id
@@ -188,7 +204,4 @@ module "ec2" {
 
   # Secrets
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
-
-  # Application configuration
-  frontend_url = var.frontend_url
 }

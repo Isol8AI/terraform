@@ -1,5 +1,5 @@
 # =============================================================================
-# Freebird Infrastructure - Provider Configuration
+# Isol8 Infrastructure - Provider Configuration
 # =============================================================================
 
 terraform {
@@ -21,7 +21,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "freebird"
+      Project     = "isol8"
       Environment = var.environment
       ManagedBy   = "terraform"
     }
