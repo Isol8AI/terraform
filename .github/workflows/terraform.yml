@@ -260,7 +260,7 @@ jobs:
   apply-dev:
     name: Apply to Dev
     runs-on: ubuntu-latest
-    needs: [plan-dev, plan-staging, plan-prod]
+    needs: [plan-dev]
     if: |
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'all' || github.event.inputs.environment == 'dev'))
