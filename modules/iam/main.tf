@@ -122,6 +122,33 @@ resource "aws_iam_role_policy" "ec2_ecr" {
   })
 }
 
+# EC2 Policy - AWS Bedrock access (for LLM inference)
+resource "aws_iam_role_policy" "ec2_bedrock" {
+  name = "bedrock-access"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+        ]
+        Resource = [
+          # Foundation models (direct invocation)
+          "arn:aws:bedrock:*::foundation-model/*",
+          # Inference profiles (required for on-demand throughput)
+          "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*",
+          # System-defined inference profiles (us., eu., apac. prefixes)
+          "arn:aws:bedrock:*:*:inference-profile/*",
+        ]
+      }
+    ]
+  })
+}
+
 # EC2 Policy - SSM access (for GitHub Actions deployments via SSM)
 resource "aws_iam_role_policy" "ec2_ssm" {
   name = "ssm-access"
