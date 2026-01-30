@@ -89,11 +89,12 @@ resource "aws_launch_template" "main" {
 
   # User data script
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    project            = var.project
-    environment        = var.environment
-    secrets_arn_prefix = var.secrets_arn_prefix
-    aws_region         = var.aws_region
-    frontend_url       = var.frontend_url
+    project              = var.project
+    environment          = var.environment
+    secrets_arn_prefix   = var.secrets_arn_prefix
+    aws_region           = var.aws_region
+    frontend_url         = var.frontend_url
+    enclave_bucket_name  = var.enclave_bucket_name
   }))
 
   # Metadata options (IMDSv2 required for security)

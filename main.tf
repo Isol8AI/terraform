@@ -178,6 +178,21 @@ resource "aws_route53_record" "api" {
 }
 
 # -----------------------------------------------------------------------------
+# S3 Module (Enclave Artifacts)
+# -----------------------------------------------------------------------------
+module "s3_enclave" {
+  source = "./modules/s3-enclave"
+
+  project     = "isol8"
+  environment = var.environment
+  kms_key_arn = module.kms.key_arn
+
+  # IAM roles that need access
+  ec2_role_arn            = module.iam.ec2_role_arn
+  github_actions_role_arn = module.iam.github_actions_role_arn
+}
+
+# -----------------------------------------------------------------------------
 # EC2 Module (Nitro Enclave)
 # -----------------------------------------------------------------------------
 module "ec2" {
@@ -207,4 +222,7 @@ module "ec2" {
 
   # CORS
   frontend_url = var.frontend_url
+
+  # Enclave artifacts
+  enclave_bucket_name = module.s3_enclave.bucket_name
 }

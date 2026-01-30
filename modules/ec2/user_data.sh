@@ -10,6 +10,7 @@ ENVIRONMENT="${environment}"
 SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
 REGION="${aws_region}"
 FRONTEND_URL="${frontend_url}"
+ENCLAVE_BUCKET="${enclave_bucket_name}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -50,6 +51,23 @@ systemctl enable nitro-enclaves-allocator
 # Add ec2-user to docker and ne groups
 usermod -aG docker ec2-user
 usermod -aG ne ec2-user
+
+# -----------------------------------------------------------------------------
+# Download Enclave EIF from S3 (if available)
+# -----------------------------------------------------------------------------
+ENCLAVE_DIR="/home/ec2-user/enclave"
+mkdir -p "$ENCLAVE_DIR"
+chown ec2-user:ec2-user "$ENCLAVE_DIR"
+
+if [ -n "$ENCLAVE_BUCKET" ]; then
+    echo "Downloading enclave EIF from S3..."
+    aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 yet (this is expected for first deployment)"
+
+    if [ -f "$ENCLAVE_DIR/enclave.eif" ]; then
+        chown ec2-user:ec2-user "$ENCLAVE_DIR/enclave.eif"
+        echo "EIF downloaded successfully"
+    fi
+fi
 
 # -----------------------------------------------------------------------------
 # Fetch secrets from Secrets Manager

@@ -76,3 +76,10 @@ variable "max_count" {
   type        = number
   default     = 3
 }
+
+# Enclave
+variable "enclave_bucket_name" {
+  description = "S3 bucket name for enclave artifacts"
+  type        = string
+  default     = ""
+}
