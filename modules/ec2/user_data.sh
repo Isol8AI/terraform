@@ -21,7 +21,11 @@ echo "Starting Isol8 backend setup..."
 # -----------------------------------------------------------------------------
 yum update -y
 amazon-linux-extras install docker -y
-yum install -y aws-cli jq
+amazon-linux-extras install python3.8 -y
+yum install -y aws-cli jq gcc python38-devel libffi-devel openssl-devel
+
+# Upgrade pip for Python on host
+python3 -m pip install --upgrade pip
 
 # Start Docker
 systemctl start docker
@@ -53,19 +57,50 @@ usermod -aG docker ec2-user
 usermod -aG ne ec2-user
 
 # -----------------------------------------------------------------------------
-# Download Enclave EIF from S3 (if available)
+# Download Enclave files from S3 (source + EIF if available)
 # -----------------------------------------------------------------------------
 ENCLAVE_DIR="/home/ec2-user/enclave"
 mkdir -p "$ENCLAVE_DIR"
 chown ec2-user:ec2-user "$ENCLAVE_DIR"
 
 if [ -n "$ENCLAVE_BUCKET" ]; then
+    echo "Downloading enclave source files from S3..."
+    aws s3 sync "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/source/" "$ENCLAVE_DIR/" --region "$REGION" || echo "No enclave source in S3 yet"
+
     echo "Downloading enclave EIF from S3..."
     aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 yet (this is expected for first deployment)"
 
-    if [ -f "$ENCLAVE_DIR/enclave.eif" ]; then
-        chown ec2-user:ec2-user "$ENCLAVE_DIR/enclave.eif"
-        echo "EIF downloaded successfully"
+    chown -R ec2-user:ec2-user "$ENCLAVE_DIR"
+
+    # Install parent-side Python dependencies
+    if [ -f "$ENCLAVE_DIR/requirements-parent.txt" ]; then
+        echo "Installing parent-side Python dependencies..."
+        python3 -m pip install -r "$ENCLAVE_DIR/requirements-parent.txt"
+    fi
+
+    # Create vsock-proxy systemd service (for enclave outbound HTTPS)
+    if [ -f "$ENCLAVE_DIR/vsock_proxy.py" ]; then
+        echo "Creating vsock-proxy systemd service..."
+        cat > /etc/systemd/system/vsock-proxy.service << 'EOFSERVICE'
+[Unit]
+Description=vsock Proxy for Nitro Enclave
+After=network.target nitro-enclaves-allocator.service
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/enclave
+ExecStart=/usr/bin/python3 /home/ec2-user/enclave/vsock_proxy.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOFSERVICE
+        systemctl daemon-reload
+        systemctl enable vsock-proxy
+        systemctl start vsock-proxy
+        echo "vsock-proxy service started"
     fi
 fi
 
