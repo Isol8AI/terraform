@@ -520,6 +520,14 @@ resource "aws_iam_role_policy" "github_terraform_infra" {
           "autoscaling:*",
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "S3Full"
+        Effect = "Allow"
+        Action = [
+          "s3:*",
+        ]
+        Resource = "*"
       }
     ]
   })
