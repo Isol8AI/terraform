@@ -196,9 +196,18 @@ OM_PG_DSN=$(aws secretsmanager get-secret-value \
 # Create environment file
 # -----------------------------------------------------------------------------
 # Use real Nitro Enclave if EIF exists, otherwise fall back to mock
+# Get the enclave CID if enclave is running
+ENCLAVE_CID_VALUE=""
 if [ -f "/home/ec2-user/enclave/enclave.eif" ]; then
     ENCLAVE_MODE_VALUE="nitro"
     echo "EIF found - using real Nitro Enclave"
+    # Get the CID from the running enclave
+    ENCLAVE_CID_VALUE=$(nitro-cli describe-enclaves | jq -r '.[0].EnclaveCID // empty' 2>/dev/null || echo "")
+    if [ -n "$ENCLAVE_CID_VALUE" ]; then
+        echo "Enclave CID for .env: $ENCLAVE_CID_VALUE"
+    else
+        echo "WARNING: Could not get enclave CID - container may fail to connect"
+    fi
 else
     ENCLAVE_MODE_VALUE="mock"
     echo "No EIF found - using MockEnclave"
@@ -216,6 +225,7 @@ CORS_ORIGINS=$FRONTEND_URL
 ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
 ENCLAVE_MODE=$ENCLAVE_MODE_VALUE
+ENCLAVE_CID=$ENCLAVE_CID_VALUE
 EOF
 
 chmod 600 /home/ec2-user/.env
