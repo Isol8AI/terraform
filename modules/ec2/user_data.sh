@@ -134,7 +134,7 @@ Requires=nitro-enclaves-allocator.service
 [Service]
 Type=simple
 User=root
-ExecStartPre=/usr/bin/nitro-cli terminate-enclave --all || true
+ExecStartPre=-/usr/bin/nitro-cli terminate-enclave --all
 ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /home/ec2-user/enclave/enclave.eif --cpu-count 2 --memory 2048 --attach-console
 ExecStop=/usr/bin/nitro-cli terminate-enclave --all
 Restart=always
