@@ -276,6 +276,7 @@ ExecStart=/usr/bin/docker run --rm \
     --name isol8 \
     --env-file /home/ec2-user/.env \
     --device /dev/vsock \
+    --cap-add=NET_ADMIN \
     -p 8000:8000 \
     $ECR_REPO:latest
 
