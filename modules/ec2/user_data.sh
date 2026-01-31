@@ -277,7 +277,7 @@ ExecStart=/usr/bin/docker run --rm \
     --env-file /home/ec2-user/.env \
     --device /dev/vsock \
     --privileged \
-    -p 8000:8000 \
+    --network=host \
     $ECR_REPO:latest
 
 [Install]
