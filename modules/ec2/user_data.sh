@@ -102,6 +102,44 @@ EOFSERVICE
         systemctl start vsock-proxy
         echo "vsock-proxy service started"
     fi
+
+    # Create enclave systemd service (runs the Nitro Enclave)
+    if [ -f "$ENCLAVE_DIR/enclave.eif" ]; then
+        echo "Creating nitro-enclave systemd service..."
+        cat > /etc/systemd/system/nitro-enclave.service << 'EOFSERVICE'
+[Unit]
+Description=Nitro Enclave for Isol8
+After=nitro-enclaves-allocator.service vsock-proxy.service
+Requires=nitro-enclaves-allocator.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/usr/bin/nitro-cli terminate-enclave --all || true
+ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /home/ec2-user/enclave/enclave.eif --cpu-count 2 --memory 2048 --attach-console
+ExecStop=/usr/bin/nitro-cli terminate-enclave --all
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOFSERVICE
+        systemctl daemon-reload
+        systemctl enable nitro-enclave
+        systemctl start nitro-enclave
+        echo "Nitro enclave service started"
+
+        # Wait for enclave to be ready and get its CID
+        sleep 5
+        ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r '.[0].EnclaveCID // empty')
+        if [ -n "$ENCLAVE_CID" ]; then
+            echo "Enclave started with CID: $ENCLAVE_CID"
+        else
+            echo "WARNING: Enclave may not have started correctly"
+        fi
+    else
+        echo "No enclave.eif found - will use MockEnclave"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -138,6 +176,15 @@ OM_PG_DSN=$(aws secretsmanager get-secret-value \
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
+# Use real Nitro Enclave if EIF exists, otherwise fall back to mock
+if [ -f "/home/ec2-user/enclave/enclave.eif" ]; then
+    ENCLAVE_MODE_VALUE="nitro"
+    echo "EIF found - using real Nitro Enclave"
+else
+    ENCLAVE_MODE_VALUE="mock"
+    echo "No EIF found - using MockEnclave"
+fi
+
 cat > /home/ec2-user/.env << EOF
 DATABASE_URL=$DATABASE_URL
 OM_METADATA_BACKEND=postgres
@@ -149,7 +196,7 @@ CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
 CORS_ORIGINS=$FRONTEND_URL
 ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
-ENCLAVE_MODE=mock
+ENCLAVE_MODE=$ENCLAVE_MODE_VALUE
 EOF
 
 chmod 600 /home/ec2-user/.env
