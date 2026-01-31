@@ -75,6 +75,10 @@ if [ -n "$ENCLAVE_BUCKET" ]; then
         echo "Building enclave EIF from source (this may take a few minutes)..."
         cd "$ENCLAVE_DIR"
         docker build -t isol8-enclave:latest -f Dockerfile.enclave .
+
+        # Set required environment variable for nitro-cli
+        export NITRO_CLI_ARTIFACTS=/var/lib/nitro_enclaves
+
         nitro-cli build-enclave --docker-uri isol8-enclave:latest --output-file "$ENCLAVE_DIR/enclave.eif"
         echo "EIF built successfully!"
 
