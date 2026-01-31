@@ -68,7 +68,22 @@ if [ -n "$ENCLAVE_BUCKET" ]; then
     aws s3 sync "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/source/" "$ENCLAVE_DIR/" --region "$REGION" || echo "No enclave source in S3 yet"
 
     echo "Downloading enclave EIF from S3..."
-    aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 yet (this is expected for first deployment)"
+    aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 - will build from source"
+
+    # Build EIF from source if it doesn't exist but Dockerfile does
+    if [ ! -f "$ENCLAVE_DIR/enclave.eif" ] && [ -f "$ENCLAVE_DIR/Dockerfile.enclave" ]; then
+        echo "Building enclave EIF from source (this may take a few minutes)..."
+        cd "$ENCLAVE_DIR"
+        docker build -t isol8-enclave:latest -f Dockerfile.enclave .
+        nitro-cli build-enclave --docker-uri isol8-enclave:latest --output-file "$ENCLAVE_DIR/enclave.eif"
+        echo "EIF built successfully!"
+
+        # Upload the built EIF to S3 for future instances
+        aws s3 cp "$ENCLAVE_DIR/enclave.eif" "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" --region "$REGION" && \
+            echo "EIF uploaded to S3 for future instances" || \
+            echo "Could not upload EIF to S3 (non-fatal)"
+        cd /
+    fi
 
     chown -R ec2-user:ec2-user "$ENCLAVE_DIR"
 
