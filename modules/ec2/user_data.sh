@@ -148,13 +148,22 @@ EOFSERVICE
         systemctl start nitro-enclave
         echo "Nitro enclave service started"
 
-        # Wait for enclave to be ready and get its CID
-        sleep 5
-        ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r '.[0].EnclaveCID // empty')
-        if [ -n "$ENCLAVE_CID" ]; then
-            echo "Enclave started with CID: $ENCLAVE_CID"
-        else
-            echo "WARNING: Enclave may not have started correctly"
+        # Wait for enclave to be ready (up to 2 minutes)
+        echo "Waiting for enclave to start..."
+        ENCLAVE_CID=""
+        for i in $(seq 1 24); do
+            ENCLAVE_CID=$(nitro-cli describe-enclaves 2>/dev/null | jq -r '.[0].EnclaveCID // empty')
+            if [ -n "$ENCLAVE_CID" ]; then
+                echo "Enclave started with CID: $ENCLAVE_CID (attempt $i)"
+                break
+            fi
+            echo "Waiting for enclave... (attempt $i/24)"
+            sleep 5
+        done
+
+        if [ -z "$ENCLAVE_CID" ]; then
+            echo "ERROR: Enclave failed to start within 2 minutes"
+            systemctl status nitro-enclave --no-pager || true
         fi
     else
         echo "No enclave.eif found - will use MockEnclave"
@@ -201,12 +210,18 @@ ENCLAVE_CID_VALUE=""
 if [ -f "/home/ec2-user/enclave/enclave.eif" ]; then
     ENCLAVE_MODE_VALUE="nitro"
     echo "EIF found - using real Nitro Enclave"
-    # Get the CID from the running enclave
-    ENCLAVE_CID_VALUE=$(nitro-cli describe-enclaves | jq -r '.[0].EnclaveCID // empty' 2>/dev/null || echo "")
-    if [ -n "$ENCLAVE_CID_VALUE" ]; then
-        echo "Enclave CID for .env: $ENCLAVE_CID_VALUE"
-    else
-        echo "WARNING: Could not get enclave CID - container may fail to connect"
+    # Get the CID from the running enclave (retry if needed)
+    for i in $(seq 1 12); do
+        ENCLAVE_CID_VALUE=$(nitro-cli describe-enclaves 2>/dev/null | jq -r '.[0].EnclaveCID // empty')
+        if [ -n "$ENCLAVE_CID_VALUE" ]; then
+            echo "Enclave CID for .env: $ENCLAVE_CID_VALUE"
+            break
+        fi
+        echo "Waiting for enclave CID... ($i/12)"
+        sleep 5
+    done
+    if [ -z "$ENCLAVE_CID_VALUE" ]; then
+        echo "ERROR: Could not get enclave CID after 60s - container will fail to connect"
     fi
 else
     ENCLAVE_MODE_VALUE="mock"
