@@ -203,8 +203,6 @@ resource "aws_iam_role_policy" "ec2_s3_enclave" {
 
 # EC2 Policy - API Gateway Management API (for WebSocket push)
 resource "aws_iam_role_policy" "ec2_websocket" {
-  count = var.websocket_api_arn != "" ? 1 : 0
-
   name = "websocket-management-api"
   role = aws_iam_role.ec2.id
 
@@ -224,8 +222,6 @@ resource "aws_iam_role_policy" "ec2_websocket" {
 
 # EC2 Policy - DynamoDB access for WebSocket connections
 resource "aws_iam_role_policy" "ec2_websocket_dynamodb" {
-  count = var.ws_connections_table_arn != "" ? 1 : 0
-
   name = "websocket-dynamodb"
   role = aws_iam_role.ec2.id
 
