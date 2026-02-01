@@ -29,21 +29,20 @@ variable "certificate_arn" {
 }
 
 # -----------------------------------------------------------------------------
-# ALB Integration
+# NLB Integration (VPC Link V1 - Required for WebSocket APIs)
+# -----------------------------------------------------------------------------
+# WebSocket APIs require VPC Link V1 (aws_api_gateway_vpc_link) which targets NLB.
+# VPC Link V2 (aws_apigatewayv2_vpc_link) does NOT support WebSocket APIs.
+# The ALB is still used for HTTP API; this NLB is specifically for WebSocket.
 # -----------------------------------------------------------------------------
 
-variable "vpc_link_id" {
-  description = "VPC Link ID for ALB integration (shared with HTTP API)"
+variable "nlb_arn" {
+  description = "NLB ARN for VPC Link V1 target"
   type        = string
 }
 
-variable "alb_listener_arn" {
-  description = "ALB listener ARN for WebSocket forwarding"
-  type        = string
-}
-
-variable "alb_dns_name" {
-  description = "Internal ALB DNS name for HTTP integration URIs"
+variable "nlb_dns_name" {
+  description = "NLB DNS name for integration URI"
   type        = string
 }
 

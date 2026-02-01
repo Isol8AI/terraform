@@ -127,6 +127,24 @@ resource "aws_cloudwatch_log_group" "authorizer" {
   }
 }
 
+# =============================================================================
+# VPC Link V1 (Required for WebSocket APIs)
+# =============================================================================
+# VPC Link V2 (aws_apigatewayv2_vpc_link) does NOT support WebSocket APIs.
+# Must use VPC Link V1 (aws_api_gateway_vpc_link) which targets NLB.
+# =============================================================================
+
+resource "aws_api_gateway_vpc_link" "websocket" {
+  name        = "${var.project}-${var.environment}-ws-vpc-link-v1"
+  target_arns = [var.nlb_arn]
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-ws-vpc-link-v1"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
 # -----------------------------------------------------------------------------
 # VPC Link Integrations (one per route for HTTP type)
 # -----------------------------------------------------------------------------
@@ -135,10 +153,10 @@ resource "aws_cloudwatch_log_group" "authorizer" {
 resource "aws_apigatewayv2_integration" "connect" {
   api_id             = aws_apigatewayv2_api.websocket.id
   integration_type   = "HTTP"
-  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/connect"
+  integration_uri    = "http://${var.nlb_dns_name}/api/v1/ws/connect"
   integration_method = "POST"
   connection_type    = "VPC_LINK"
-  connection_id      = var.vpc_link_id
+  connection_id      = aws_api_gateway_vpc_link.websocket.id
 
   request_parameters = {
     "integration.request.header.x-connection-id" = "context.connectionId"
@@ -154,10 +172,10 @@ resource "aws_apigatewayv2_integration" "connect" {
 resource "aws_apigatewayv2_integration" "disconnect" {
   api_id             = aws_apigatewayv2_api.websocket.id
   integration_type   = "HTTP"
-  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/disconnect"
+  integration_uri    = "http://${var.nlb_dns_name}/api/v1/ws/disconnect"
   integration_method = "POST"
   connection_type    = "VPC_LINK"
-  connection_id      = var.vpc_link_id
+  connection_id      = aws_api_gateway_vpc_link.websocket.id
 
   request_parameters = {
     "integration.request.header.x-connection-id" = "context.connectionId"
@@ -171,10 +189,10 @@ resource "aws_apigatewayv2_integration" "disconnect" {
 resource "aws_apigatewayv2_integration" "message" {
   api_id             = aws_apigatewayv2_api.websocket.id
   integration_type   = "HTTP"
-  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/message"
+  integration_uri    = "http://${var.nlb_dns_name}/api/v1/ws/message"
   integration_method = "POST"
   connection_type    = "VPC_LINK"
-  connection_id      = var.vpc_link_id
+  connection_id      = aws_api_gateway_vpc_link.websocket.id
 
   request_parameters = {
     "integration.request.header.x-connection-id" = "context.connectionId"

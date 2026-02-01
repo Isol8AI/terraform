@@ -74,3 +74,9 @@ output "management_api_url" {
   description = "Management API URL for pushing messages to clients"
   value       = "${aws_apigatewayv2_api.websocket.api_endpoint}/${aws_apigatewayv2_stage.main.name}"
 }
+
+# VPC Link V1 output
+output "vpc_link_v1_id" {
+  description = "VPC Link V1 ID for WebSocket API"
+  value       = aws_api_gateway_vpc_link.websocket.id
+}
