@@ -26,25 +26,25 @@ resource "aws_kms_key" "enclave" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowRootFullAccess"
-        Effect = "Allow"
+        Sid       = "AllowRootFullAccess"
+        Effect    = "Allow"
         Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
-        Action   = "kms:*"
-        Resource = "*"
+        Action    = "kms:*"
+        Resource  = "*"
       },
       {
-        Sid    = "AllowEC2Encrypt"
-        Effect = "Allow"
+        Sid       = "AllowEC2Encrypt"
+        Effect    = "Allow"
         Principal = { AWS = var.ec2_role_arn }
-        Action   = ["kms:Encrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
-        Resource = "*"
+        Action    = ["kms:Encrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
+        Resource  = "*"
       },
       {
-        Sid    = "AllowEnclaveDecrypt"
-        Effect = "Allow"
+        Sid       = "AllowEnclaveDecrypt"
+        Effect    = "Allow"
         Principal = { AWS = var.ec2_role_arn }
-        Action   = ["kms:Decrypt"]
-        Resource = "*"
+        Action    = ["kms:Decrypt"]
+        Resource  = "*"
         Condition = {
           StringEqualsIgnoreCase = {
             "kms:RecipientAttestation:PCR0" = var.enclave_pcr0
@@ -54,29 +54,29 @@ resource "aws_kms_key" "enclave" {
         }
       }
     ]
-  }) : jsonencode({
+    }) : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowRootFullAccess"
-        Effect = "Allow"
+        Sid       = "AllowRootFullAccess"
+        Effect    = "Allow"
         Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
-        Action   = "kms:*"
-        Resource = "*"
+        Action    = "kms:*"
+        Resource  = "*"
       },
       {
-        Sid    = "AllowEC2Encrypt"
-        Effect = "Allow"
+        Sid       = "AllowEC2Encrypt"
+        Effect    = "Allow"
         Principal = { AWS = var.ec2_role_arn }
-        Action   = ["kms:Encrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
-        Resource = "*"
+        Action    = ["kms:Encrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
+        Resource  = "*"
       },
       {
-        Sid    = "AllowEnclaveDecrypt"
-        Effect = "Allow"
+        Sid       = "AllowEnclaveDecrypt"
+        Effect    = "Allow"
         Principal = { AWS = var.ec2_role_arn }
-        Action   = ["kms:Decrypt"]
-        Resource = "*"
+        Action    = ["kms:Decrypt"]
+        Resource  = "*"
       }
     ]
   })

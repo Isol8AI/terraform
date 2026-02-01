@@ -201,6 +201,51 @@ resource "aws_iam_role_policy" "ec2_s3_enclave" {
   })
 }
 
+# EC2 Policy - API Gateway Management API (for WebSocket push)
+resource "aws_iam_role_policy" "ec2_websocket" {
+  count = var.websocket_api_arn != "" ? 1 : 0
+
+  name = "websocket-management-api"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "execute-api:ManageConnections"
+        ]
+        Resource = "${var.websocket_api_arn}/*"
+      }
+    ]
+  })
+}
+
+# EC2 Policy - DynamoDB access for WebSocket connections
+resource "aws_iam_role_policy" "ec2_websocket_dynamodb" {
+  count = var.ws_connections_table_arn != "" ? 1 : 0
+
+  name = "websocket-dynamodb"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+        ]
+        Resource = var.ws_connections_table_arn
+      }
+    ]
+  })
+}
+
 # -----------------------------------------------------------------------------
 # GitHub Actions OIDC Provider (use existing one created by bootstrap)
 # -----------------------------------------------------------------------------
@@ -526,6 +571,31 @@ resource "aws_iam_role_policy" "github_terraform_infra" {
         Effect = "Allow"
         Action = [
           "s3:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "LambdaFull"
+        Effect = "Allow"
+        Action = [
+          "lambda:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "DynamoDBFull"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "IAMTagRole"
+        Effect = "Allow"
+        Action = [
+          "iam:TagRole",
+          "iam:UntagRole",
         ]
         Resource = "*"
       }

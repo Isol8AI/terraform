@@ -128,6 +128,63 @@ resource "aws_cloudwatch_log_group" "authorizer" {
 }
 
 # -----------------------------------------------------------------------------
+# VPC Link Integrations (one per route for HTTP type)
+# -----------------------------------------------------------------------------
+
+# $connect integration
+resource "aws_apigatewayv2_integration" "connect" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  integration_type   = "HTTP"
+  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/connect"
+  integration_method = "POST"
+  connection_type    = "VPC_LINK"
+  connection_id      = var.vpc_link_id
+
+  request_parameters = {
+    "integration.request.header.x-connection-id" = "context.connectionId"
+    "integration.request.header.x-user-id"       = "context.authorizer.userId"
+    "integration.request.header.x-org-id"        = "context.authorizer.orgId"
+    "integration.request.header.Content-Type"    = "'application/json'"
+  }
+
+  timeout_milliseconds = 5000
+}
+
+# $disconnect integration
+resource "aws_apigatewayv2_integration" "disconnect" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  integration_type   = "HTTP"
+  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/disconnect"
+  integration_method = "POST"
+  connection_type    = "VPC_LINK"
+  connection_id      = var.vpc_link_id
+
+  request_parameters = {
+    "integration.request.header.x-connection-id" = "context.connectionId"
+    "integration.request.header.Content-Type"    = "'application/json'"
+  }
+
+  timeout_milliseconds = 5000
+}
+
+# $default integration (messages)
+resource "aws_apigatewayv2_integration" "message" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  integration_type   = "HTTP"
+  integration_uri    = "http://${var.alb_dns_name}/api/v1/ws/message"
+  integration_method = "POST"
+  connection_type    = "VPC_LINK"
+  connection_id      = var.vpc_link_id
+
+  request_parameters = {
+    "integration.request.header.x-connection-id" = "context.connectionId"
+    "integration.request.header.Content-Type"    = "'application/json'"
+  }
+
+  timeout_milliseconds = 10000
+}
+
+# -----------------------------------------------------------------------------
 # Routes
 # -----------------------------------------------------------------------------
 
@@ -137,39 +194,21 @@ resource "aws_apigatewayv2_route" "connect" {
   route_key          = "$connect"
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.clerk_jwt.id
-  target             = "integrations/${aws_apigatewayv2_integration.alb.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.connect.id}"
 }
 
 # $disconnect route
 resource "aws_apigatewayv2_route" "disconnect" {
   api_id    = aws_apigatewayv2_api.websocket.id
   route_key = "$disconnect"
-  target    = "integrations/${aws_apigatewayv2_integration.alb.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
 }
 
 # $default route (for all messages)
 resource "aws_apigatewayv2_route" "default" {
   api_id    = aws_apigatewayv2_api.websocket.id
   route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.alb.id}"
-}
-
-# -----------------------------------------------------------------------------
-# VPC Link Integration
-# -----------------------------------------------------------------------------
-resource "aws_apigatewayv2_integration" "alb" {
-  api_id             = aws_apigatewayv2_api.websocket.id
-  integration_type   = "HTTP_PROXY"
-  integration_uri    = var.alb_listener_arn
-  integration_method = "ANY"
-  connection_type    = "VPC_LINK"
-  connection_id      = var.vpc_link_id
-
-  # Pass authorizer context to backend via headers
-  request_parameters = {
-    "integration.request.header.x-user-id" = "context.authorizer.userId"
-    "integration.request.header.x-org-id"  = "context.authorizer.orgId"
-  }
+  target    = "integrations/${aws_apigatewayv2_integration.message.id}"
 }
 
 # -----------------------------------------------------------------------------
@@ -244,4 +283,29 @@ resource "aws_apigatewayv2_api_mapping" "websocket" {
   api_id      = aws_apigatewayv2_api.websocket.id
   domain_name = aws_apigatewayv2_domain_name.websocket[0].id
   stage       = aws_apigatewayv2_stage.main.id
+}
+
+# -----------------------------------------------------------------------------
+# DynamoDB Table for Connection State
+# -----------------------------------------------------------------------------
+resource "aws_dynamodb_table" "connections" {
+  name         = "${var.project}-${var.environment}-ws-connections"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "connectionId"
+
+  attribute {
+    name = "connectionId"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-ws-connections"
+    Project     = var.project
+    Environment = var.environment
+  }
 }

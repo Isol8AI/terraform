@@ -82,3 +82,13 @@ output "websocket_url" {
   description = "WebSocket URL for client connections (wss://ws-{env}.isol8.co)"
   value       = module.websocket_api.websocket_url
 }
+
+output "ws_connections_table" {
+  description = "DynamoDB table name for WebSocket connections"
+  value       = module.websocket_api.connections_table_name
+}
+
+output "ws_management_api_url" {
+  description = "Management API URL for backend to push WebSocket messages"
+  value       = module.websocket_api.management_api_url
+}

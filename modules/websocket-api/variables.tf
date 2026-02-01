@@ -42,6 +42,11 @@ variable "alb_listener_arn" {
   type        = string
 }
 
+variable "alb_dns_name" {
+  description = "Internal ALB DNS name for HTTP integration URIs"
+  type        = string
+}
+
 # -----------------------------------------------------------------------------
 # Clerk Configuration
 # -----------------------------------------------------------------------------

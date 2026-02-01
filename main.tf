@@ -89,6 +89,10 @@ module "iam" {
   # GitHub OIDC for CI/CD
   github_org   = var.github_org
   github_repos = var.github_repos
+
+  # WebSocket permissions
+  websocket_api_arn        = module.websocket_api.execution_arn
+  ws_connections_table_arn = module.websocket_api.connections_table_arn
 }
 
 # -----------------------------------------------------------------------------
@@ -173,6 +177,7 @@ module "websocket_api" {
   # Reuse VPC Link from HTTP API (saves cost)
   vpc_link_id      = module.api_gateway.vpc_link_id
   alb_listener_arn = module.alb.http_listener_arn
+  alb_dns_name     = module.alb.dns_name
 
   # Clerk configuration for JWT validation
   clerk_jwks_url = var.clerk_jwks_url
@@ -262,4 +267,8 @@ module "ec2" {
 
   # Enclave artifacts
   enclave_bucket_name = module.s3_enclave.bucket_name
+
+  # WebSocket
+  ws_connections_table  = module.websocket_api.connections_table_name
+  ws_management_api_url = module.websocket_api.management_api_url
 }

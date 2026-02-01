@@ -33,3 +33,15 @@ variable "github_repos" {
   type        = list(string)
   default     = []
 }
+
+variable "websocket_api_arn" {
+  description = "WebSocket API execution ARN for Management API permissions"
+  type        = string
+  default     = ""
+}
+
+variable "ws_connections_table_arn" {
+  description = "DynamoDB table ARN for WebSocket connections"
+  type        = string
+  default     = ""
+}

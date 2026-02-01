@@ -58,3 +58,19 @@ output "authorizer_function_arn" {
   description = "Lambda authorizer function ARN"
   value       = aws_lambda_function.authorizer.arn
 }
+
+# DynamoDB connection state outputs
+output "connections_table_name" {
+  description = "DynamoDB table name for connection state"
+  value       = aws_dynamodb_table.connections.name
+}
+
+output "connections_table_arn" {
+  description = "DynamoDB table ARN for IAM policies"
+  value       = aws_dynamodb_table.connections.arn
+}
+
+output "management_api_url" {
+  description = "Management API URL for pushing messages to clients"
+  value       = "${aws_apigatewayv2_api.websocket.api_endpoint}/${aws_apigatewayv2_stage.main.name}"
+}
