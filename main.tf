@@ -136,6 +136,21 @@ module "alb" {
 }
 
 # -----------------------------------------------------------------------------
+# NLB Module (for WebSocket VPC Link V1)
+# -----------------------------------------------------------------------------
+# VPC Link V1 (required for WebSocket APIs) only supports NLB targets.
+# This NLB handles WebSocket traffic alongside the ALB for HTTP traffic.
+# -----------------------------------------------------------------------------
+module "nlb" {
+  source = "./modules/nlb"
+
+  project     = "isol8"
+  environment = var.environment
+  vpc_id      = module.vpc.vpc_id
+  subnet_ids  = module.vpc.private_subnet_ids
+}
+
+# -----------------------------------------------------------------------------
 # API Gateway Module (Public entry point)
 # -----------------------------------------------------------------------------
 module "api_gateway" {
@@ -174,10 +189,9 @@ module "websocket_api" {
   domain_name     = "ws-${var.environment}.${var.root_domain}"
   certificate_arn = module.acm.certificate_arn
 
-  # Reuse VPC Link from HTTP API (saves cost)
-  vpc_link_id      = module.api_gateway.vpc_link_id
-  alb_listener_arn = module.alb.http_listener_arn
-  alb_dns_name     = module.alb.dns_name
+  # NLB for VPC Link V1 (required for WebSocket APIs)
+  nlb_arn      = module.nlb.arn
+  nlb_dns_name = module.nlb.dns_name
 
   # Clerk configuration for JWT validation
   clerk_jwks_url = var.clerk_jwks_url
@@ -255,9 +269,12 @@ module "ec2" {
   # IAM
   instance_profile_name = module.iam.ec2_instance_profile_name
 
-  # ALB
+  # ALB (for HTTP API)
   target_group_arn      = module.alb.target_group_arn
   alb_security_group_id = module.alb.security_group_id
+
+  # NLB (for WebSocket)
+  nlb_target_group_arn = module.nlb.target_group_arn
 
   # Secrets
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
