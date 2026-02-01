@@ -275,6 +275,7 @@ module "ec2" {
 
   # NLB (for WebSocket)
   nlb_target_group_arn = module.nlb.target_group_arn
+  vpc_cidr             = module.vpc.vpc_cidr
 
   # Secrets
   secrets_arn_prefix = module.secrets.secrets_arn_prefix

@@ -28,13 +28,26 @@ resource "aws_security_group" "ec2" {
   description = "Security group for EC2 instances"
   vpc_id      = var.vpc_id
 
-  # Allow inbound from ALB only
+  # Allow inbound from ALB
   ingress {
     description     = "HTTP from ALB"
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
     security_groups = [var.alb_security_group_id]
+  }
+
+  # Allow inbound from NLB (WebSocket traffic)
+  # NLB doesn't use security groups - traffic comes from NLB IPs within VPC
+  dynamic "ingress" {
+    for_each = var.vpc_cidr != "" ? [1] : []
+    content {
+      description = "WebSocket from NLB"
+      from_port   = 8000
+      to_port     = 8000
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
+    }
   }
 
   # Allow all outbound (for HuggingFace API, etc.)

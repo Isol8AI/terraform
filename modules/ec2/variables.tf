@@ -54,6 +54,12 @@ variable "alb_security_group_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "VPC CIDR block for NLB traffic ingress"
+  type        = string
+  default     = ""
+}
+
 variable "secrets_arn_prefix" {
   description = "Secrets Manager ARN prefix"
   type        = string
