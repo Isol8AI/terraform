@@ -21,7 +21,8 @@ root_domain  = "isol8.co"
 frontend_url = "https://dev.isol8.co"
 
 # Clerk (using production Clerk with custom domain)
-clerk_issuer = "https://clerk.isol8.co"
+clerk_issuer   = "https://clerk.isol8.co"
+clerk_jwks_url = "https://clerk.isol8.co/.well-known/jwks.json"
 
 # GitHub (for CI/CD OIDC) - trust both backend and terraform repos
 github_org   = "Isol8AI"
