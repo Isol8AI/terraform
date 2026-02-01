@@ -125,7 +125,13 @@ resource "aws_launch_template" "main" {
 resource "aws_autoscaling_group" "main" {
   name                = "${var.project}-${var.environment}-asg"
   vpc_zone_identifier = var.subnet_ids
-  target_group_arns   = [var.target_group_arn]
+
+  # Attach both ALB and NLB target groups
+  # compact() removes empty strings, so if nlb_target_group_arn is not provided, it won't cause an error
+  target_group_arns = compact([
+    var.target_group_arn,     # ALB target group (HTTP API)
+    var.nlb_target_group_arn, # NLB target group (WebSocket)
+  ])
 
   min_size         = var.min_count
   max_size         = var.max_count

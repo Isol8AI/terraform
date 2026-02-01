@@ -43,6 +43,12 @@ variable "target_group_arn" {
   type        = string
 }
 
+variable "nlb_target_group_arn" {
+  description = "NLB target group ARN for WebSocket traffic"
+  type        = string
+  default     = ""
+}
+
 variable "alb_security_group_id" {
   description = "ALB security group ID"
   type        = string
