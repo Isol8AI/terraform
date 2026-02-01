@@ -74,3 +74,11 @@ output "secrets_arn_prefix" {
   description = "ARN prefix for Secrets Manager secrets"
   value       = module.secrets.secrets_arn_prefix
 }
+
+# -----------------------------------------------------------------------------
+# WebSocket API Outputs
+# -----------------------------------------------------------------------------
+output "websocket_url" {
+  description = "WebSocket URL for client connections (wss://ws-{env}.isol8.co)"
+  value       = module.websocket_api.websocket_url
+}

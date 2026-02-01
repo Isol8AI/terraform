@@ -26,3 +26,8 @@ output "stage_id" {
   description = "API Gateway stage ID"
   value       = aws_apigatewayv2_stage.main.id
 }
+
+output "vpc_link_id" {
+  description = "VPC Link ID (for sharing with WebSocket API)"
+  value       = aws_apigatewayv2_vpc_link.main.id
+}

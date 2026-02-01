@@ -1,0 +1,247 @@
+# =============================================================================
+# WebSocket API Gateway Module
+# =============================================================================
+# Creates a WebSocket API Gateway with Clerk JWT Lambda authorizer for
+# real-time bidirectional communication with the backend.
+#
+# Architecture:
+#   Client (wss://) -> API Gateway WebSocket -> VPC Link -> ALB -> EC2
+#
+# Authentication:
+#   $connect route uses Lambda authorizer that validates Clerk JWT from
+#   query parameter (?token=...) and passes user context to backend via headers.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# WebSocket API
+# -----------------------------------------------------------------------------
+resource "aws_apigatewayv2_api" "websocket" {
+  name                       = "${var.project}-${var.environment}-websocket"
+  protocol_type              = "WEBSOCKET"
+  route_selection_expression = "$request.body.action"
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-websocket"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Lambda Authorizer
+# -----------------------------------------------------------------------------
+
+# Package Lambda code
+data "archive_file" "authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/../../lambda/websocket-authorizer"
+  output_path = "${path.module}/../../lambda/websocket-authorizer.zip"
+  excludes    = ["__pycache__", "*.pyc"]
+}
+
+# Lambda execution role
+resource "aws_iam_role" "authorizer" {
+  name = "${var.project}-${var.environment}-ws-authorizer-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-ws-authorizer-role"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "authorizer_basic" {
+  role       = aws_iam_role.authorizer.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Lambda function
+resource "aws_lambda_function" "authorizer" {
+  filename         = data.archive_file.authorizer.output_path
+  function_name    = "${var.project}-${var.environment}-ws-authorizer"
+  role             = aws_iam_role.authorizer.arn
+  handler          = "index.handler"
+  source_code_hash = data.archive_file.authorizer.output_base64sha256
+  runtime          = "python3.11"
+  timeout          = 10
+
+  environment {
+    variables = {
+      CLERK_JWKS_URL = var.clerk_jwks_url
+      CLERK_ISSUER   = var.clerk_issuer
+    }
+  }
+
+  # Lambda layer for dependencies (PyJWT, cryptography)
+  layers = var.jwt_layer_arn != "" ? [var.jwt_layer_arn] : []
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-ws-authorizer"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# Permission for API Gateway to invoke Lambda
+resource "aws_lambda_permission" "authorizer" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.websocket.execution_arn}/*"
+}
+
+# API Gateway authorizer
+resource "aws_apigatewayv2_authorizer" "clerk_jwt" {
+  api_id                            = aws_apigatewayv2_api.websocket.id
+  authorizer_type                   = "REQUEST"
+  authorizer_uri                    = aws_lambda_function.authorizer.invoke_arn
+  identity_sources                  = ["route.request.querystring.token"]
+  name                              = "clerk-jwt-authorizer"
+  authorizer_payload_format_version = "2.0"
+  enable_simple_responses           = true
+}
+
+# -----------------------------------------------------------------------------
+# CloudWatch Log Group for Lambda
+# -----------------------------------------------------------------------------
+resource "aws_cloudwatch_log_group" "authorizer" {
+  name              = "/aws/lambda/${aws_lambda_function.authorizer.function_name}"
+  retention_in_days = 30
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-ws-authorizer-logs"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Routes
+# -----------------------------------------------------------------------------
+
+# $connect route (with authorizer)
+resource "aws_apigatewayv2_route" "connect" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  route_key          = "$connect"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.clerk_jwt.id
+  target             = "integrations/${aws_apigatewayv2_integration.alb.id}"
+}
+
+# $disconnect route
+resource "aws_apigatewayv2_route" "disconnect" {
+  api_id    = aws_apigatewayv2_api.websocket.id
+  route_key = "$disconnect"
+  target    = "integrations/${aws_apigatewayv2_integration.alb.id}"
+}
+
+# $default route (for all messages)
+resource "aws_apigatewayv2_route" "default" {
+  api_id    = aws_apigatewayv2_api.websocket.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.alb.id}"
+}
+
+# -----------------------------------------------------------------------------
+# VPC Link Integration
+# -----------------------------------------------------------------------------
+resource "aws_apigatewayv2_integration" "alb" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  integration_type   = "HTTP_PROXY"
+  integration_uri    = var.alb_listener_arn
+  integration_method = "ANY"
+  connection_type    = "VPC_LINK"
+  connection_id      = var.vpc_link_id
+
+  # Pass authorizer context to backend via headers
+  request_parameters = {
+    "integration.request.header.x-user-id" = "context.authorizer.userId"
+    "integration.request.header.x-org-id"  = "context.authorizer.orgId"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Stage
+# -----------------------------------------------------------------------------
+resource "aws_apigatewayv2_stage" "main" {
+  api_id      = aws_apigatewayv2_api.websocket.id
+  name        = var.environment
+  auto_deploy = true
+
+  default_route_settings {
+    throttling_burst_limit = var.throttling_burst_limit
+    throttling_rate_limit  = var.throttling_rate_limit
+  }
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.websocket_api.arn
+    format = jsonencode({
+      requestId    = "$context.requestId"
+      ip           = "$context.identity.sourceIp"
+      requestTime  = "$context.requestTime"
+      routeKey     = "$context.routeKey"
+      status       = "$context.status"
+      connectionId = "$context.connectionId"
+      eventType    = "$context.eventType"
+      authorizer   = "$context.authorizer.error"
+      error        = "$context.integrationErrorMessage"
+    })
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-websocket-stage"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Log Group for API Gateway
+resource "aws_cloudwatch_log_group" "websocket_api" {
+  name              = "/aws/api-gateway/${var.project}-${var.environment}-websocket"
+  retention_in_days = 30
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-websocket-api-logs"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Custom Domain (optional)
+# -----------------------------------------------------------------------------
+resource "aws_apigatewayv2_domain_name" "websocket" {
+  count       = var.domain_name != "" ? 1 : 0
+  domain_name = var.domain_name
+
+  domain_name_configuration {
+    certificate_arn = var.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-websocket-domain"
+    Project     = var.project
+    Environment = var.environment
+  }
+}
+
+resource "aws_apigatewayv2_api_mapping" "websocket" {
+  count       = var.domain_name != "" ? 1 : 0
+  api_id      = aws_apigatewayv2_api.websocket.id
+  domain_name = aws_apigatewayv2_domain_name.websocket[0].id
+  stage       = aws_apigatewayv2_stage.main.id
+}

@@ -110,6 +110,11 @@ variable "clerk_issuer" {
   type        = string
 }
 
+variable "clerk_jwks_url" {
+  description = "Clerk JWKS URL for JWT validation (e.g., https://<clerk-domain>/.well-known/jwks.json)"
+  type        = string
+}
+
 variable "clerk_secret_key" {
   description = "Clerk secret key for server-side API calls"
   type        = string

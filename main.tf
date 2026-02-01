@@ -29,8 +29,8 @@ module "vpc" {
 module "kms" {
   source = "./modules/kms"
 
-  project     = "isol8"
-  environment = var.environment
+  project      = "isol8"
+  environment  = var.environment
   ec2_role_arn = module.iam.ec2_role_arn
 
   # PCR values for enclave attestation (set after first build)
@@ -47,9 +47,9 @@ module "kms" {
 locals {
   # Append schema to connection string (URL-encoded: %3D is =)
   # If connection string already has ?, append with &, otherwise add ?
-  db_has_query    = length(regexall("\\?", var.supabase_connection_string)) > 0
-  db_separator    = local.db_has_query ? "&" : "?"
-  database_url    = "${var.supabase_connection_string}${local.db_separator}options=-csearch_path%3D${var.environment}"
+  db_has_query = length(regexall("\\?", var.supabase_connection_string)) > 0
+  db_separator = local.db_has_query ? "&" : "?"
+  database_url = "${var.supabase_connection_string}${local.db_separator}options=-csearch_path%3D${var.environment}"
 
   # OpenMemory uses standard psycopg format (without +asyncpg)
   # Convert asyncpg URL to standard PostgreSQL URL for OpenMemory
@@ -81,9 +81,9 @@ module "secrets" {
 module "iam" {
   source = "./modules/iam"
 
-  project     = "isol8"
-  environment = var.environment
-  kms_key_arn = module.kms.key_arn
+  project            = "isol8"
+  environment        = var.environment
+  kms_key_arn        = module.kms.key_arn
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
 
   # GitHub OIDC for CI/CD
@@ -158,13 +158,36 @@ module "api_gateway" {
 }
 
 # -----------------------------------------------------------------------------
-# Route53 DNS Record (points domain to API Gateway)
+# WebSocket API Gateway (for streaming - avoids HTTP API buffering)
+# -----------------------------------------------------------------------------
+module "websocket_api" {
+  source = "./modules/websocket-api"
+
+  project     = "isol8"
+  environment = var.environment
+
+  # Custom domain (ws-{env}.isol8.co)
+  domain_name     = "ws-${var.environment}.${var.root_domain}"
+  certificate_arn = module.acm.certificate_arn
+
+  # Reuse VPC Link from HTTP API (saves cost)
+  vpc_link_id      = module.api_gateway.vpc_link_id
+  alb_listener_arn = module.alb.http_listener_arn
+
+  # Clerk configuration for JWT validation
+  clerk_jwks_url = var.clerk_jwks_url
+  clerk_issuer   = var.clerk_issuer
+}
+
+# -----------------------------------------------------------------------------
+# Route53 DNS Records
 # -----------------------------------------------------------------------------
 data "aws_route53_zone" "main" {
   name         = var.root_domain
   private_zone = false
 }
 
+# HTTP API record (api-{env}.isol8.co)
 resource "aws_route53_record" "api" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = var.domain_name
@@ -173,6 +196,20 @@ resource "aws_route53_record" "api" {
   alias {
     name                   = module.api_gateway.custom_domain_name
     zone_id                = module.api_gateway.custom_domain_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# WebSocket API record (ws-{env}.isol8.co)
+resource "aws_route53_record" "websocket" {
+  count   = module.websocket_api.custom_domain != null ? 1 : 0
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = module.websocket_api.custom_domain
+  type    = "A"
+
+  alias {
+    name                   = module.websocket_api.custom_domain_target
+    zone_id                = module.websocket_api.custom_domain_zone_id
     evaluate_target_health = false
   }
 }
@@ -214,7 +251,7 @@ module "ec2" {
   instance_profile_name = module.iam.ec2_instance_profile_name
 
   # ALB
-  target_group_arn = module.alb.target_group_arn
+  target_group_arn      = module.alb.target_group_arn
   alb_security_group_id = module.alb.security_group_id
 
   # Secrets
