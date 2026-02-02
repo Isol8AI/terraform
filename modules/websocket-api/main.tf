@@ -231,54 +231,33 @@ resource "aws_apigatewayv2_integration_response" "message" {
 # -----------------------------------------------------------------------------
 # Routes
 # -----------------------------------------------------------------------------
+# Note: Route responses are NOT configured because our backend uses one-way
+# communication - actual responses are sent via Management API (POST to connection),
+# not via HTTP response body. Without route_response_selection_expression, the
+# HTTP response body is not forwarded to the WebSocket client.
+# See: https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-route-response.html
 
 # $connect route (with authorizer)
-# route_response_selection_expression required for two-way communication with HTTP integration
-# See: https://github.com/hashicorp/terraform-provider-aws/issues/17528
 resource "aws_apigatewayv2_route" "connect" {
-  api_id                              = aws_apigatewayv2_api.websocket.id
-  route_key                           = "$connect"
-  authorization_type                  = "CUSTOM"
-  authorizer_id                       = aws_apigatewayv2_authorizer.clerk_jwt.id
-  target                              = "integrations/${aws_apigatewayv2_integration.connect.id}"
-  route_response_selection_expression = "$default"
-}
-
-# $connect route response
-resource "aws_apigatewayv2_route_response" "connect" {
   api_id             = aws_apigatewayv2_api.websocket.id
-  route_id           = aws_apigatewayv2_route.connect.id
-  route_response_key = "$default"
+  route_key          = "$connect"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.clerk_jwt.id
+  target             = "integrations/${aws_apigatewayv2_integration.connect.id}"
 }
 
 # $disconnect route
 resource "aws_apigatewayv2_route" "disconnect" {
-  api_id                              = aws_apigatewayv2_api.websocket.id
-  route_key                           = "$disconnect"
-  target                              = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
-  route_response_selection_expression = "$default"
-}
-
-# $disconnect route response
-resource "aws_apigatewayv2_route_response" "disconnect" {
-  api_id             = aws_apigatewayv2_api.websocket.id
-  route_id           = aws_apigatewayv2_route.disconnect.id
-  route_response_key = "$default"
+  api_id    = aws_apigatewayv2_api.websocket.id
+  route_key = "$disconnect"
+  target    = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
 }
 
 # $default route (for all messages)
 resource "aws_apigatewayv2_route" "default" {
-  api_id                              = aws_apigatewayv2_api.websocket.id
-  route_key                           = "$default"
-  target                              = "integrations/${aws_apigatewayv2_integration.message.id}"
-  route_response_selection_expression = "$default"
-}
-
-# $default route response
-resource "aws_apigatewayv2_route_response" "default" {
-  api_id             = aws_apigatewayv2_api.websocket.id
-  route_id           = aws_apigatewayv2_route.default.id
-  route_response_key = "$default"
+  api_id    = aws_apigatewayv2_api.websocket.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.message.id}"
 }
 
 # -----------------------------------------------------------------------------
