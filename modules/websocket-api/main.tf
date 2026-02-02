@@ -41,7 +41,13 @@ resource "null_resource" "authorizer_deps" {
   provisioner "local-exec" {
     command = <<-EOT
       cd ${path.module}/../../lambda/websocket-authorizer
-      pip install -r requirements.txt -t . --upgrade --quiet
+      # Install packages built for Lambda's Amazon Linux 2 environment
+      pip install -r requirements.txt -t . \
+        --platform manylinux2014_x86_64 \
+        --implementation cp \
+        --python-version 3.11 \
+        --only-binary :all: \
+        --upgrade --quiet
     EOT
   }
 }
