@@ -31,12 +31,29 @@ resource "aws_apigatewayv2_api" "websocket" {
 # Lambda Authorizer
 # -----------------------------------------------------------------------------
 
-# Package Lambda code
+# Install Python dependencies before packaging
+resource "null_resource" "authorizer_deps" {
+  triggers = {
+    requirements = filemd5("${path.module}/../../lambda/websocket-authorizer/requirements.txt")
+    source       = filemd5("${path.module}/../../lambda/websocket-authorizer/index.py")
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      cd ${path.module}/../../lambda/websocket-authorizer
+      pip install -r requirements.txt -t . --upgrade --quiet
+    EOT
+  }
+}
+
+# Package Lambda code (after dependencies are installed)
 data "archive_file" "authorizer" {
   type        = "zip"
   source_dir  = "${path.module}/../../lambda/websocket-authorizer"
   output_path = "${path.module}/../../lambda/websocket-authorizer.zip"
-  excludes    = ["__pycache__", "*.pyc"]
+  excludes    = ["__pycache__", "*.pyc", "*.dist-info", "requirements.txt"]
+
+  depends_on = [null_resource.authorizer_deps]
 }
 
 # Lambda execution role
