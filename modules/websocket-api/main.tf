@@ -171,6 +171,15 @@ resource "aws_apigatewayv2_integration" "connect" {
   timeout_milliseconds = 5000
 }
 
+# $connect integration response - required for non-proxy HTTP integrations
+# Maps backend HTTP response to WebSocket response
+# See: https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-integration-responses.html
+resource "aws_apigatewayv2_integration_response" "connect" {
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.connect.id
+  integration_response_key = "$default"
+}
+
 # $disconnect integration
 resource "aws_apigatewayv2_integration" "disconnect" {
   api_id             = aws_apigatewayv2_api.websocket.id
@@ -186,6 +195,13 @@ resource "aws_apigatewayv2_integration" "disconnect" {
   }
 
   timeout_milliseconds = 5000
+}
+
+# $disconnect integration response
+resource "aws_apigatewayv2_integration_response" "disconnect" {
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.disconnect.id
+  integration_response_key = "$default"
 }
 
 # $default integration (messages)
@@ -205,31 +221,64 @@ resource "aws_apigatewayv2_integration" "message" {
   timeout_milliseconds = 10000
 }
 
+# $default integration response
+resource "aws_apigatewayv2_integration_response" "message" {
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.message.id
+  integration_response_key = "$default"
+}
+
 # -----------------------------------------------------------------------------
 # Routes
 # -----------------------------------------------------------------------------
 
 # $connect route (with authorizer)
+# route_response_selection_expression required for two-way communication with HTTP integration
+# See: https://github.com/hashicorp/terraform-provider-aws/issues/17528
 resource "aws_apigatewayv2_route" "connect" {
+  api_id                              = aws_apigatewayv2_api.websocket.id
+  route_key                           = "$connect"
+  authorization_type                  = "CUSTOM"
+  authorizer_id                       = aws_apigatewayv2_authorizer.clerk_jwt.id
+  target                              = "integrations/${aws_apigatewayv2_integration.connect.id}"
+  route_response_selection_expression = "$default"
+}
+
+# $connect route response
+resource "aws_apigatewayv2_route_response" "connect" {
   api_id             = aws_apigatewayv2_api.websocket.id
-  route_key          = "$connect"
-  authorization_type = "CUSTOM"
-  authorizer_id      = aws_apigatewayv2_authorizer.clerk_jwt.id
-  target             = "integrations/${aws_apigatewayv2_integration.connect.id}"
+  route_id           = aws_apigatewayv2_route.connect.id
+  route_response_key = "$default"
 }
 
 # $disconnect route
 resource "aws_apigatewayv2_route" "disconnect" {
-  api_id    = aws_apigatewayv2_api.websocket.id
-  route_key = "$disconnect"
-  target    = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
+  api_id                              = aws_apigatewayv2_api.websocket.id
+  route_key                           = "$disconnect"
+  target                              = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
+  route_response_selection_expression = "$default"
+}
+
+# $disconnect route response
+resource "aws_apigatewayv2_route_response" "disconnect" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  route_id           = aws_apigatewayv2_route.disconnect.id
+  route_response_key = "$default"
 }
 
 # $default route (for all messages)
 resource "aws_apigatewayv2_route" "default" {
-  api_id    = aws_apigatewayv2_api.websocket.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.message.id}"
+  api_id                              = aws_apigatewayv2_api.websocket.id
+  route_key                           = "$default"
+  target                              = "integrations/${aws_apigatewayv2_integration.message.id}"
+  route_response_selection_expression = "$default"
+}
+
+# $default route response
+resource "aws_apigatewayv2_route_response" "default" {
+  api_id             = aws_apigatewayv2_api.websocket.id
+  route_id           = aws_apigatewayv2_route.default.id
+  route_response_key = "$default"
 }
 
 # -----------------------------------------------------------------------------
