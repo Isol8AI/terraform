@@ -85,3 +85,13 @@ variable "throttling_rate_limit" {
   type        = number
   default     = 50
 }
+
+# -----------------------------------------------------------------------------
+# CloudWatch Logging
+# -----------------------------------------------------------------------------
+
+variable "enable_api_gateway_logging_role" {
+  description = "Create account-level IAM role for API Gateway CloudWatch logging. Only set to true for one environment per AWS account."
+  type        = bool
+  default     = true
+}

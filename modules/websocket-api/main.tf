@@ -277,6 +277,46 @@ resource "aws_cloudwatch_log_group" "websocket_api" {
 }
 
 # -----------------------------------------------------------------------------
+# API Gateway Account-Level CloudWatch Logging Role
+# -----------------------------------------------------------------------------
+# This is an account-level setting required for API Gateway access logging.
+# Only created if enable_api_gateway_logging_role is true (default for dev).
+# Should only be created once per AWS account.
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_role" "api_gateway_cloudwatch" {
+  count = var.enable_api_gateway_logging_role ? 1 : 0
+  name  = "api-gateway-cloudwatch-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "apigateway.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name    = "api-gateway-cloudwatch-role"
+    Project = var.project
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
+  count      = var.enable_api_gateway_logging_role ? 1 : 0
+  role       = aws_iam_role.api_gateway_cloudwatch[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_api_gateway_account" "main" {
+  count               = var.enable_api_gateway_logging_role ? 1 : 0
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch[0].arn
+}
+
+# -----------------------------------------------------------------------------
 # Custom Domain (optional)
 # -----------------------------------------------------------------------------
 resource "aws_apigatewayv2_domain_name" "websocket" {

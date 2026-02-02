@@ -108,7 +108,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-dev
-          path: tfplan-dev
+          path: |
+            tfplan-dev
+            lambda/*.zip
 
   plan-staging:
     name: Plan Staging
@@ -180,7 +182,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-staging
-          path: tfplan-staging
+          path: |
+            tfplan-staging
+            lambda/*.zip
 
   plan-prod:
     name: Plan Production
@@ -252,7 +256,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-prod
-          path: tfplan-prod
+          path: |
+            tfplan-prod
+            lambda/*.zip
 
   # ===========================================================================
   # Apply to Dev (automatic)
