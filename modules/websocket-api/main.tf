@@ -30,36 +30,17 @@ resource "aws_apigatewayv2_api" "websocket" {
 # -----------------------------------------------------------------------------
 # Lambda Authorizer
 # -----------------------------------------------------------------------------
+# Dependencies are installed by CI/CD pipeline (GitHub Actions) before
+# terraform plan runs. This ensures the archive_file includes all packages.
+# See .github/workflows/terraform.yml "Install Lambda dependencies" step.
+# -----------------------------------------------------------------------------
 
-# Install Python dependencies before packaging
-resource "null_resource" "authorizer_deps" {
-  triggers = {
-    requirements = filemd5("${path.module}/../../lambda/websocket-authorizer/requirements.txt")
-    source       = filemd5("${path.module}/../../lambda/websocket-authorizer/index.py")
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      cd ${path.module}/../../lambda/websocket-authorizer
-      # Install packages built for Lambda's Amazon Linux 2 environment
-      pip install -r requirements.txt -t . \
-        --platform manylinux2014_x86_64 \
-        --implementation cp \
-        --python-version 3.11 \
-        --only-binary :all: \
-        --upgrade --quiet
-    EOT
-  }
-}
-
-# Package Lambda code (after dependencies are installed)
+# Package Lambda code (dependencies installed by CI)
 data "archive_file" "authorizer" {
   type        = "zip"
   source_dir  = "${path.module}/../../lambda/websocket-authorizer"
   output_path = "${path.module}/../../lambda/websocket-authorizer.zip"
   excludes    = ["__pycache__", "*.pyc", "*.dist-info", "requirements.txt"]
-
-  depends_on = [null_resource.authorizer_deps]
 }
 
 # Lambda execution role
