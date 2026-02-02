@@ -71,8 +71,10 @@ output "connections_table_arn" {
 }
 
 output "management_api_url" {
-  description = "Management API URL for pushing messages to clients"
-  value       = "${aws_apigatewayv2_api.websocket.api_endpoint}/${aws_apigatewayv2_stage.main.name}"
+  description = "Management API URL for pushing messages to clients (HTTPS, not WSS)"
+  # API Gateway Management API requires https:// not wss://
+  # api_endpoint returns wss://, so we convert to https://
+  value = replace("${aws_apigatewayv2_api.websocket.api_endpoint}/${aws_apigatewayv2_stage.main.name}", "wss://", "https://")
 }
 
 # VPC Link V1 output
