@@ -33,6 +33,30 @@ def get_jwks_client() -> PyJWKClient:
     return _jwks_client
 
 
+def generate_policy(principal_id: str, effect: str, resource: str, context: dict = None) -> dict:
+    """
+    Generate IAM policy document for WebSocket API authorizer.
+
+    WebSocket APIs require IAM policy format (unlike HTTP APIs which use isAuthorized).
+    """
+    policy = {
+        "principalId": principal_id,
+        "policyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Action": "execute-api:Invoke",
+                    "Effect": effect,
+                    "Resource": resource,
+                }
+            ],
+        },
+    }
+    if context:
+        policy["context"] = context
+    return policy
+
+
 def handler(event: dict, context: Any) -> dict:
     """
     Lambda authorizer handler for WebSocket API.
@@ -44,11 +68,12 @@ def handler(event: dict, context: Any) -> dict:
         context: Lambda context (unused)
 
     Returns:
-        Authorization response with:
-            - isAuthorized: bool
-            - context: {userId, orgId} if authorized
+        IAM policy document (WebSocket APIs require this format, not isAuthorized).
     """
     logger.info("Authorizer invoked")
+
+    # methodArn is used as the resource in the policy
+    method_arn = event.get("methodArn", "*")
 
     # Extract token from query parameters
     query_params = event.get("queryStringParameters") or {}
@@ -56,7 +81,7 @@ def handler(event: dict, context: Any) -> dict:
 
     if not token:
         logger.warning("No token provided in query parameters")
-        return {"isAuthorized": False}
+        return generate_policy("unauthorized", "Deny", method_arn)
 
     try:
         # Get signing key from JWKS
@@ -82,27 +107,30 @@ def handler(event: dict, context: Any) -> dict:
 
         if not user_id:
             logger.warning("Token missing 'sub' claim")
-            return {"isAuthorized": False}
+            return generate_policy("unauthorized", "Deny", method_arn)
 
         logger.info(f"Authorized user_id={user_id}, org_id={org_id or 'personal'}")
 
-        return {
-            "isAuthorized": True,
-            "context": {
+        # Return IAM policy with Allow effect and user context
+        return generate_policy(
+            principal_id=user_id,
+            effect="Allow",
+            resource=method_arn,
+            context={
                 "userId": user_id,
                 "orgId": org_id or "",
             }
-        }
+        )
 
     except jwt.ExpiredSignatureError:
         logger.warning("Token expired")
-        return {"isAuthorized": False}
+        return generate_policy("unauthorized", "Deny", method_arn)
     except jwt.InvalidIssuerError:
         logger.warning("Invalid token issuer")
-        return {"isAuthorized": False}
+        return generate_policy("unauthorized", "Deny", method_arn)
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
-        return {"isAuthorized": False}
+        return generate_policy("unauthorized", "Deny", method_arn)
     except Exception as e:
         logger.exception(f"Unexpected error validating token: {e}")
-        return {"isAuthorized": False}
+        return generate_policy("unauthorized", "Deny", method_arn)
