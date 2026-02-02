@@ -173,16 +173,12 @@ resource "aws_apigatewayv2_integration" "connect" {
 
 # $connect integration response - required for non-proxy HTTP integrations
 # Maps backend HTTP response to WebSocket response
-# Uses empty template to prevent HTTP body from being forwarded to client
+# Backend returns empty body, so no template transformation needed
 # See: https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-integration-responses.html
 resource "aws_apigatewayv2_integration_response" "connect" {
-  api_id                        = aws_apigatewayv2_api.websocket.id
-  integration_id                = aws_apigatewayv2_integration.connect.id
-  integration_response_key      = "$default"
-  template_selection_expression = "\\$default"
-  response_templates = {
-    "$default" = ""
-  }
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.connect.id
+  integration_response_key = "$default"
 }
 
 # $disconnect integration
@@ -202,15 +198,11 @@ resource "aws_apigatewayv2_integration" "disconnect" {
   timeout_milliseconds = 5000
 }
 
-# $disconnect integration response - empty template to suppress HTTP body
+# $disconnect integration response - backend returns empty body
 resource "aws_apigatewayv2_integration_response" "disconnect" {
-  api_id                        = aws_apigatewayv2_api.websocket.id
-  integration_id                = aws_apigatewayv2_integration.disconnect.id
-  integration_response_key      = "$default"
-  template_selection_expression = "\\$default"
-  response_templates = {
-    "$default" = ""
-  }
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.disconnect.id
+  integration_response_key = "$default"
 }
 
 # $default integration (messages)
@@ -230,16 +222,12 @@ resource "aws_apigatewayv2_integration" "message" {
   timeout_milliseconds = 10000
 }
 
-# $default integration response - empty template to suppress HTTP body
+# $default integration response - backend returns empty body
 # Actual responses come via Management API, not HTTP response
 resource "aws_apigatewayv2_integration_response" "message" {
-  api_id                        = aws_apigatewayv2_api.websocket.id
-  integration_id                = aws_apigatewayv2_integration.message.id
-  integration_response_key      = "$default"
-  template_selection_expression = "\\$default"
-  response_templates = {
-    "$default" = ""
-  }
+  api_id                   = aws_apigatewayv2_api.websocket.id
+  integration_id           = aws_apigatewayv2_integration.message.id
+  integration_response_key = "$default"
 }
 
 # -----------------------------------------------------------------------------
