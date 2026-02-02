@@ -103,14 +103,13 @@ resource "aws_lambda_permission" "authorizer" {
 }
 
 # API Gateway authorizer
+# Note: WebSocket APIs don't support authorizer_payload_format_version or enable_simple_responses
 resource "aws_apigatewayv2_authorizer" "clerk_jwt" {
-  api_id                            = aws_apigatewayv2_api.websocket.id
-  authorizer_type                   = "REQUEST"
-  authorizer_uri                    = aws_lambda_function.authorizer.invoke_arn
-  identity_sources                  = ["route.request.querystring.token"]
-  name                              = "clerk-jwt-authorizer"
-  authorizer_payload_format_version = "2.0"
-  enable_simple_responses           = true
+  api_id           = aws_apigatewayv2_api.websocket.id
+  authorizer_type  = "REQUEST"
+  authorizer_uri   = aws_lambda_function.authorizer.invoke_arn
+  identity_sources = ["route.request.querystring.token"]
+  name             = "clerk-jwt-authorizer"
 }
 
 # -----------------------------------------------------------------------------
@@ -262,6 +261,9 @@ resource "aws_apigatewayv2_stage" "main" {
     Project     = var.project
     Environment = var.environment
   }
+
+  # Ensure CloudWatch logging role is fully propagated before creating stage
+  depends_on = [aws_api_gateway_account.main]
 }
 
 # CloudWatch Log Group for API Gateway
