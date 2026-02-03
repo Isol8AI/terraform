@@ -73,10 +73,12 @@ if [ -n "$ENCLAVE_BUCKET" ]; then
     aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 - will build from source"
 
     # Build EIF from source if it doesn't exist but Dockerfile does
-    if [ ! -f "$ENCLAVE_DIR/enclave.eif" ] && [ -f "$ENCLAVE_DIR/Dockerfile.enclave" ]; then
+    # Note: S3 structure is source/enclave/ and source/agent/ (for OpenClaw submodule)
+    if [ ! -f "$ENCLAVE_DIR/enclave.eif" ] && [ -f "$ENCLAVE_DIR/enclave/Dockerfile.enclave" ]; then
         echo "Building enclave EIF from source (this may take a few minutes)..."
         cd "$ENCLAVE_DIR"
-        docker build -t isol8-enclave:latest -f Dockerfile.enclave .
+        # Build context is current dir (contains enclave/ and agent/)
+        docker build -t isol8-enclave:latest -f enclave/Dockerfile.enclave .
 
         # Set required environment variable for nitro-cli
         export NITRO_CLI_ARTIFACTS=/var/lib/nitro_enclaves
@@ -94,13 +96,13 @@ if [ -n "$ENCLAVE_BUCKET" ]; then
     chown -R ec2-user:ec2-user "$ENCLAVE_DIR"
 
     # Install parent-side Python dependencies
-    if [ -f "$ENCLAVE_DIR/requirements-parent.txt" ]; then
+    if [ -f "$ENCLAVE_DIR/enclave/requirements-parent.txt" ]; then
         echo "Installing parent-side Python dependencies..."
-        python3 -m pip install -r "$ENCLAVE_DIR/requirements-parent.txt"
+        python3 -m pip install -r "$ENCLAVE_DIR/enclave/requirements-parent.txt"
     fi
 
     # Create vsock-proxy systemd service (for enclave outbound HTTPS)
-    if [ -f "$ENCLAVE_DIR/vsock_proxy.py" ]; then
+    if [ -f "$ENCLAVE_DIR/enclave/vsock_proxy.py" ]; then
         echo "Creating vsock-proxy systemd service..."
         cat > /etc/systemd/system/vsock-proxy.service << 'EOFSERVICE'
 [Unit]
@@ -111,7 +113,7 @@ After=network.target nitro-enclaves-allocator.service
 Type=simple
 User=ec2-user
 WorkingDirectory=/home/ec2-user/enclave
-ExecStart=/usr/bin/python3 /home/ec2-user/enclave/vsock_proxy.py
+ExecStart=/usr/bin/python3 /home/ec2-user/enclave/enclave/vsock_proxy.py
 Restart=always
 RestartSec=5
 
