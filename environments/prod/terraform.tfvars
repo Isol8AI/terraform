@@ -10,7 +10,8 @@ vpc_cidr           = "10.2.0.0/16"
 availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
 
 # EC2 (DISABLED - instances stopped to save costs during development)
-ec2_instance_type = "m5.xlarge"
+# r5.xlarge provides 32GB RAM for enclave (4GB EIF requires ~16GB)
+ec2_instance_type = "r5.xlarge"
 ec2_desired_count = 0
 ec2_min_count     = 0
 ec2_max_count     = 0

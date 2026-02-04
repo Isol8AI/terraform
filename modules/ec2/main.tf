@@ -151,8 +151,9 @@ resource "aws_autoscaling_group" "main" {
   desired_capacity = var.desired_count
 
   # Health check
+  # Grace period extended for EIF build (4GB EIF takes ~15 min to build)
   health_check_type         = "ELB"
-  health_check_grace_period = 300
+  health_check_grace_period = 1200
 
   # Launch template
   launch_template {
@@ -166,6 +167,8 @@ resource "aws_autoscaling_group" "main" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 50
+      # Instance warmup extended for EIF build (4GB EIF takes ~15 min)
+      instance_warmup = 900
     }
     triggers = ["launch_template"]
   }

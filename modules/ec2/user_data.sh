@@ -42,11 +42,12 @@ amazon-linux-extras install aws-nitro-enclaves-cli -y
 yum install -y aws-nitro-enclaves-cli-devel
 
 # Configure enclave allocator
+# 4GB EIF requires ~16GB RAM to run (4x EIF size)
 cat > /etc/nitro_enclaves/allocator.yaml << 'EOF'
 ---
-# 2GB memory for enclave (adjust based on model requirements)
-memory_mib: 2048
-# 2 CPUs for enclave
+# 16GB memory for enclave (4GB EIF requires ~4x its size)
+memory_mib: 16384
+# 2 CPUs for enclave (leave 2 for parent on r5.xlarge)
 cpu_count: 2
 EOF
 
@@ -139,7 +140,7 @@ Requires=nitro-enclaves-allocator.service
 Type=simple
 User=root
 ExecStartPre=-/usr/bin/nitro-cli terminate-enclave --all
-ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /home/ec2-user/enclave/enclave.eif --cpu-count 2 --memory 2048 --attach-console
+ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /home/ec2-user/enclave/enclave.eif --cpu-count 2 --memory 16384 --attach-console
 ExecStop=/usr/bin/nitro-cli terminate-enclave --all
 Restart=always
 RestartSec=10
