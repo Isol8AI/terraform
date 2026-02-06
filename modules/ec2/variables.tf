@@ -108,3 +108,10 @@ variable "ws_management_api_url" {
   type        = string
   default     = ""
 }
+
+# KMS
+variable "kms_key_id" {
+  description = "KMS key ID for enclave envelope encryption (background mode)"
+  type        = string
+  default     = ""
+}

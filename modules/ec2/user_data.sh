@@ -13,6 +13,7 @@ FRONTEND_URL="${frontend_url}"
 ENCLAVE_BUCKET="${enclave_bucket_name}"
 WS_CONNECTIONS_TABLE="${ws_connections_table}"
 WS_MANAGEMENT_API_URL="${ws_management_api_url}"
+KMS_KEY_ID="${kms_key_id}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -248,6 +249,7 @@ ENCLAVE_MODE=$ENCLAVE_MODE_VALUE
 ENCLAVE_CID=$ENCLAVE_CID_VALUE
 WS_CONNECTIONS_TABLE=$WS_CONNECTIONS_TABLE
 WS_MANAGEMENT_API_URL=$WS_MANAGEMENT_API_URL
+KMS_KEY_ID=$KMS_KEY_ID
 AWS_REGION=$REGION
 AWS_DEFAULT_REGION=$REGION
 EOF

@@ -289,4 +289,7 @@ module "ec2" {
   # WebSocket
   ws_connections_table  = module.websocket_api.connections_table_name
   ws_management_api_url = module.websocket_api.management_api_url
+
+  # KMS (for background mode agent encryption)
+  kms_key_id = module.kms.key_id
 }

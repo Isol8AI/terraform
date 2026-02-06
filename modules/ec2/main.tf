@@ -110,6 +110,7 @@ resource "aws_launch_template" "main" {
     enclave_bucket_name   = var.enclave_bucket_name
     ws_connections_table  = var.ws_connections_table
     ws_management_api_url = var.ws_management_api_url
+    kms_key_id            = var.kms_key_id
   }))
 
   # Metadata options (IMDSv2 required for security)
