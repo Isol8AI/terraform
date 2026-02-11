@@ -149,6 +149,7 @@ resource "aws_iam_role_policy" "ec2_bedrock" {
         Effect = "Allow"
         Action = [
           "bedrock:ListFoundationModels",
+          "bedrock:ListInferenceProfiles",
         ]
         Resource = "*"
       }
