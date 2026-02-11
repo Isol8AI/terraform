@@ -122,7 +122,7 @@ resource "aws_iam_role_policy" "ec2_ecr" {
   })
 }
 
-# EC2 Policy - AWS Bedrock access (for LLM inference)
+# EC2 Policy - AWS Bedrock access (for LLM inference + model discovery)
 resource "aws_iam_role_policy" "ec2_bedrock" {
   name = "bedrock-access"
   role = aws_iam_role.ec2.id
@@ -144,6 +144,13 @@ resource "aws_iam_role_policy" "ec2_bedrock" {
           # System-defined inference profiles (us., eu., apac. prefixes)
           "arn:aws:bedrock:*:*:inference-profile/*",
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:ListFoundationModels",
+        ]
+        Resource = "*"
       }
     ]
   })
