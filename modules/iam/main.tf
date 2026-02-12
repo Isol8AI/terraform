@@ -152,6 +152,15 @@ resource "aws_iam_role_policy" "ec2_bedrock" {
           "bedrock:ListInferenceProfiles",
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "aws-marketplace:ViewSubscriptions",
+          "aws-marketplace:Subscribe",
+          "aws-marketplace:Unsubscribe",
+        ]
+        Resource = "*"
       }
     ]
   })
