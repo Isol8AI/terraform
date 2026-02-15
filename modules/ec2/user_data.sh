@@ -207,6 +207,16 @@ OM_PG_DSN=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}openmemory_url" \
     --query 'SecretString' --output text)
 
+STRIPE_SECRET_KEY=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}stripe_secret_key" \
+    --query 'SecretString' --output text 2>/dev/null || echo "")
+
+STRIPE_WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}stripe_webhook_secret" \
+    --query 'SecretString' --output text 2>/dev/null || echo "")
+
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
@@ -252,6 +262,8 @@ WS_MANAGEMENT_API_URL=$WS_MANAGEMENT_API_URL
 KMS_KEY_ID=$KMS_KEY_ID
 AWS_REGION=$REGION
 AWS_DEFAULT_REGION=$REGION
+STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
 EOF
 
 chmod 600 /home/ec2-user/.env

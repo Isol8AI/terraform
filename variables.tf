@@ -128,6 +128,20 @@ variable "clerk_webhook_secret" {
   default     = ""
 }
 
+variable "stripe_secret_key" {
+  description = "Stripe API secret key (sk_test_... or sk_live_...)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret (whsec_...)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # -----------------------------------------------------------------------------
 # GitHub Actions OIDC (for CI/CD)
 # -----------------------------------------------------------------------------

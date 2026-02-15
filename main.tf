@@ -66,12 +66,14 @@ module "secrets" {
 
   # Secrets to store (encrypted with KMS key)
   secrets = {
-    database_url         = local.database_url
-    openmemory_url       = local.openmemory_url
-    huggingface_token    = var.huggingface_token
-    clerk_issuer         = var.clerk_issuer
-    clerk_secret_key     = var.clerk_secret_key
-    clerk_webhook_secret = var.clerk_webhook_secret
+    database_url           = local.database_url
+    openmemory_url         = local.openmemory_url
+    huggingface_token      = var.huggingface_token
+    clerk_issuer           = var.clerk_issuer
+    clerk_secret_key       = var.clerk_secret_key
+    clerk_webhook_secret   = var.clerk_webhook_secret
+    stripe_secret_key      = var.stripe_secret_key
+    stripe_webhook_secret  = var.stripe_webhook_secret
   }
 }
 
