@@ -70,6 +70,12 @@ variable "frontend_url" {
   type        = string
 }
 
+variable "town_frontend_url" {
+  description = "GooseTown frontend URL for CORS configuration"
+  type        = string
+  default     = ""
+}
+
 # Auto Scaling
 variable "desired_count" {
   description = "Desired number of instances"

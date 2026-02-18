@@ -89,6 +89,12 @@ variable "frontend_url" {
   type        = string
 }
 
+variable "town_frontend_url" {
+  description = "GooseTown frontend URL for CORS (e.g., https://dev.town.isol8.co)"
+  type        = string
+  default     = ""
+}
+
 # -----------------------------------------------------------------------------
 # Secrets (passed via environment variables, not in tfvars)
 # -----------------------------------------------------------------------------

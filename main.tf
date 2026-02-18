@@ -283,7 +283,8 @@ module "ec2" {
   secrets_arn_prefix = module.secrets.secrets_arn_prefix
 
   # CORS
-  frontend_url = var.frontend_url
+  frontend_url      = var.frontend_url
+  town_frontend_url = var.town_frontend_url
 
   # Enclave artifacts
   enclave_bucket_name = module.s3_enclave.bucket_name

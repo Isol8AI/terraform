@@ -18,7 +18,8 @@ ec2_max_count     = 2
 # Domain
 domain_name  = "api-dev.isol8.co"
 root_domain  = "isol8.co"
-frontend_url = "https://dev.isol8.co"
+frontend_url      = "https://dev.isol8.co"
+town_frontend_url = "https://dev.town.isol8.co"
 
 # Clerk (using production Clerk with custom domain)
 clerk_issuer   = "https://clerk.isol8.co"

@@ -107,6 +107,7 @@ resource "aws_launch_template" "main" {
     secrets_arn_prefix    = var.secrets_arn_prefix
     aws_region            = var.aws_region
     frontend_url          = var.frontend_url
+    town_frontend_url     = var.town_frontend_url
     enclave_bucket_name   = var.enclave_bucket_name
     ws_connections_table  = var.ws_connections_table
     ws_management_api_url = var.ws_management_api_url
