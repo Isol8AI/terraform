@@ -166,8 +166,8 @@ module "api_gateway" {
   alb_listener_arn      = module.alb.http_listener_arn
   alb_security_group_id = module.alb.security_group_id
 
-  # CORS - allow frontend origin
-  cors_allow_origins = [var.frontend_url]
+  # CORS - allow frontend origins
+  cors_allow_origins = compact([var.frontend_url, var.town_frontend_url])
 
   # Custom domain
   domain_name     = var.domain_name
