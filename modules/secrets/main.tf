@@ -20,10 +20,10 @@ resource "aws_secretsmanager_secret" "main" {
 }
 
 resource "aws_secretsmanager_secret_version" "main" {
-  for_each = { for k, v in var.secrets : k => v if nonsensitive(v) != "" }
+  for_each = var.secrets
 
   secret_id     = aws_secretsmanager_secret.main[each.key].id
-  secret_string = each.value
+  secret_string = each.value != "" ? each.value : "not-configured"
 }
 
 # -----------------------------------------------------------------------------
