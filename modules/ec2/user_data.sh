@@ -218,6 +218,11 @@ STRIPE_WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}stripe_webhook_secret" \
     --query 'SecretString' --output text 2>/dev/null || echo "")
 
+BRAVE_API_KEY=$(aws secretsmanager get-secret-value \
+    --region "$REGION" \
+    --secret-id "$${SECRETS_ARN_PREFIX}brave_api_key" \
+    --query 'SecretString' --output text 2>/dev/null || echo "")
+
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
@@ -265,6 +270,7 @@ AWS_REGION=$REGION
 AWS_DEFAULT_REGION=$REGION
 STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
+BRAVE_API_KEY=$BRAVE_API_KEY
 EOF
 
 chmod 600 /home/ec2-user/.env

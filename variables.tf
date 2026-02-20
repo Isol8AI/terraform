@@ -148,6 +148,13 @@ variable "stripe_webhook_secret" {
   default     = ""
 }
 
+variable "brave_api_key" {
+  description = "Brave Search API key (for OpenClaw web search tool)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # -----------------------------------------------------------------------------
 # GitHub Actions OIDC (for CI/CD)
 # -----------------------------------------------------------------------------

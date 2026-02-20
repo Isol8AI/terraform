@@ -74,6 +74,7 @@ module "secrets" {
     clerk_webhook_secret   = var.clerk_webhook_secret
     stripe_secret_key      = var.stripe_secret_key
     stripe_webhook_secret  = var.stripe_webhook_secret
+    brave_api_key          = var.brave_api_key
   }
 }
 
