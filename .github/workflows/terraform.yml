@@ -87,6 +87,7 @@ jobs:
             -var="huggingface_token=${{ secrets.HUGGINGFACE_TOKEN }}" \
             -var="clerk_secret_key=${{ secrets.CLERK_SECRET_KEY }}" \
             -var="clerk_webhook_secret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
+            -var="brave_api_key=${{ secrets.BRAVE_API_KEY }}" \
             -out=tfplan-dev \
             -no-color
         continue-on-error: true
@@ -176,6 +177,7 @@ jobs:
             -var="huggingface_token=${{ secrets.HUGGINGFACE_TOKEN }}" \
             -var="clerk_secret_key=${{ secrets.CLERK_SECRET_KEY }}" \
             -var="clerk_webhook_secret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
+            -var="brave_api_key=${{ secrets.BRAVE_API_KEY }}" \
             -out=tfplan-staging \
             -no-color
         continue-on-error: true
@@ -265,6 +267,7 @@ jobs:
             -var="huggingface_token=${{ secrets.HUGGINGFACE_TOKEN }}" \
             -var="clerk_secret_key=${{ secrets.CLERK_SECRET_KEY }}" \
             -var="clerk_webhook_secret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
+            -var="brave_api_key=${{ secrets.BRAVE_API_KEY }}" \
             -out=tfplan-prod \
             -no-color
         continue-on-error: true
