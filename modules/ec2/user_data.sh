@@ -87,6 +87,9 @@ BRAVE_API_KEY=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}brave_api_key" \
     --query 'SecretString' --output text 2>/dev/null || echo "")
 
+# OpenClaw image for per-user containers
+OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
+
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
@@ -125,7 +128,6 @@ aws ecr get-login-password --region "$REGION" | docker login --username AWS --pa
 docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
 
 # Pull OpenClaw image for per-user containers
-OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
 echo "Pulling OpenClaw image ($OPENCLAW_IMAGE)..."
 docker pull "$OPENCLAW_IMAGE" || true
 
