@@ -35,19 +35,19 @@ variable "availability_zones" {
 # -----------------------------------------------------------------------------
 
 variable "ec2_instance_type" {
-  description = "EC2 instance type (must support Nitro Enclaves)"
+  description = "EC2 instance type"
   type        = string
-  default     = "m5.xlarge" # Nitro Enclave compatible
+  default     = "m5.xlarge"
 
   validation {
-    # Only certain instance types support Nitro Enclaves
     condition = contains([
       "m5.xlarge", "m5.2xlarge", "m5.4xlarge",
       "c5.xlarge", "c5.2xlarge", "c5.4xlarge",
       "r5.xlarge", "r5.2xlarge", "r5.4xlarge",
       "m5a.xlarge", "m5a.2xlarge", "m5a.4xlarge",
+      "t3.xlarge", "t3.2xlarge",
     ], var.ec2_instance_type)
-    error_message = "Instance type must support Nitro Enclaves"
+    error_message = "Instance type must be a supported type"
   }
 }
 

@@ -9,7 +9,7 @@
 data "aws_caller_identity" "current" {}
 
 # -----------------------------------------------------------------------------
-# EC2 Role (for Nitro Enclave instances)
+# EC2 Role
 # -----------------------------------------------------------------------------
 resource "aws_iam_role" "ec2" {
   name = "${var.project}-${var.environment}-ec2-role"
@@ -190,30 +190,6 @@ resource "aws_iam_role_policy" "ec2_ssm" {
           "ec2messages:SendReply",
         ]
         Resource = "*"
-      }
-    ]
-  })
-}
-
-# EC2 Policy - S3 access for enclave artifacts
-resource "aws_iam_role_policy" "ec2_s3_enclave" {
-  name = "s3-enclave-artifacts"
-  role = aws_iam_role.ec2.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket",
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.project}-enclave-artifacts-${data.aws_caller_identity.current.account_id}",
-          "arn:aws:s3:::${var.project}-enclave-artifacts-${data.aws_caller_identity.current.account_id}/*"
-        ]
       }
     ]
   })
@@ -409,32 +385,6 @@ resource "aws_iam_role_policy" "github_terraform" {
           "dynamodb:DeleteItem",
         ]
         Resource = "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/${var.project}-terraform-locks"
-      }
-    ]
-  })
-}
-
-# GitHub Actions Policy - S3 enclave artifacts upload
-resource "aws_iam_role_policy" "github_s3_enclave" {
-  count = var.github_org != "" && length(var.github_repos) > 0 ? 1 : 0
-
-  name = "s3-enclave-artifacts"
-  role = aws_iam_role.github_actions[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket",
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.project}-enclave-artifacts-${data.aws_caller_identity.current.account_id}",
-          "arn:aws:s3:::${var.project}-enclave-artifacts-${data.aws_caller_identity.current.account_id}/*"
-        ]
       }
     ]
   })

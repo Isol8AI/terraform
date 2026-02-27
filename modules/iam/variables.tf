@@ -13,7 +13,7 @@ variable "environment" {
 }
 
 variable "kms_key_arn" {
-  description = "KMS key ARN for enclave attestation"
+  description = "KMS key ARN for encryption at rest"
   type        = string
 }
 

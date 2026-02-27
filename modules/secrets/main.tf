@@ -2,7 +2,6 @@
 # Secrets Manager Module
 # =============================================================================
 # Stores application secrets encrypted with the KMS key.
-# The enclave keypair is stored here, encrypted so only the enclave can decrypt.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -26,18 +25,3 @@ resource "aws_secretsmanager_secret_version" "main" {
   secret_string = each.value != "" ? each.value : "not-configured"
 }
 
-# -----------------------------------------------------------------------------
-# Enclave Keypair Secret
-# This secret is created empty and populated by the enclave on first boot.
-# Only the enclave can decrypt it (KMS attestation policy).
-# -----------------------------------------------------------------------------
-resource "aws_secretsmanager_secret" "enclave_keypair" {
-  name       = "${var.project}/${var.environment}/enclave-keypair"
-  kms_key_id = var.kms_key_arn
-
-  description = "Encrypted X25519 keypair for enclave. Only attested enclave can decrypt."
-
-  tags = {
-    Name = "${var.project}-${var.environment}-enclave-keypair"
-  }
-}

@@ -45,7 +45,7 @@ output "alb_dns_name" {
 # KMS Outputs
 # -----------------------------------------------------------------------------
 output "kms_key_arn" {
-  description = "KMS key ARN for enclave attestation"
+  description = "KMS key ARN for encryption at rest"
   value       = module.kms.key_arn
 }
 

@@ -4,7 +4,7 @@
 # Creates a VPC with public and private subnets, NAT gateway, and route tables.
 #
 # Public subnets: ALB
-# Private subnets: EC2 instances (Nitro Enclave)
+# Private subnets: EC2 instances
 # =============================================================================
 
 # -----------------------------------------------------------------------------

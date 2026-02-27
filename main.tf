@@ -4,11 +4,7 @@
 # This file wires together all modules for the Isol8 backend infrastructure.
 #
 # Architecture:
-#   Vercel (Frontend) → API Gateway → ALB → EC2 (Nitro Enclave)
-#
-# Security: The EC2 parent instance CANNOT see user plaintext. All decryption
-# happens inside the Nitro Enclave, which calls HuggingFace via TLS through
-# vsock-proxy (TLS terminates inside enclave, parent sees encrypted bytes).
+#   Vercel (Frontend) → API Gateway → ALB → EC2 (FastAPI + OpenClaw Gateway)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -24,7 +20,7 @@ module "vpc" {
 }
 
 # -----------------------------------------------------------------------------
-# KMS Module (Enclave Attestation)
+# KMS Module (Encryption at Rest)
 # -----------------------------------------------------------------------------
 module "kms" {
   source = "./modules/kms"
@@ -32,11 +28,6 @@ module "kms" {
   project      = "isol8"
   environment  = var.environment
   ec2_role_arn = module.iam.ec2_role_arn
-
-  # PCR values for enclave attestation (set after first build)
-  # enclave_pcr0 = var.enclave_pcr0
-  # enclave_pcr1 = var.enclave_pcr1
-  # enclave_pcr2 = var.enclave_pcr2
 }
 
 # -----------------------------------------------------------------------------
@@ -237,22 +228,7 @@ resource "aws_route53_record" "websocket" {
 }
 
 # -----------------------------------------------------------------------------
-# S3 Module (Enclave Artifacts)
-# -----------------------------------------------------------------------------
-module "s3_enclave" {
-  source = "./modules/s3-enclave"
-
-  project     = "isol8"
-  environment = var.environment
-  kms_key_arn = module.kms.key_arn
-
-  # IAM roles that need access
-  ec2_role_arn            = module.iam.ec2_role_arn
-  github_actions_role_arn = module.iam.github_actions_role_arn
-}
-
-# -----------------------------------------------------------------------------
-# EC2 Module (Nitro Enclave)
+# EC2 Module
 # -----------------------------------------------------------------------------
 module "ec2" {
   source = "./modules/ec2"
@@ -287,13 +263,7 @@ module "ec2" {
   frontend_url      = var.frontend_url
   town_frontend_url = var.town_frontend_url
 
-  # Enclave artifacts
-  enclave_bucket_name = module.s3_enclave.bucket_name
-
   # WebSocket
   ws_connections_table  = module.websocket_api.connections_table_name
   ws_management_api_url = module.websocket_api.management_api_url
-
-  # KMS (for background mode agent encryption)
-  kms_key_id = module.kms.key_id
 }

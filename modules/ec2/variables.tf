@@ -95,13 +95,6 @@ variable "max_count" {
   default     = 3
 }
 
-# Enclave
-variable "enclave_bucket_name" {
-  description = "S3 bucket name for enclave artifacts"
-  type        = string
-  default     = ""
-}
-
 # WebSocket
 variable "ws_connections_table" {
   description = "DynamoDB table name for WebSocket connections"
@@ -111,13 +104,6 @@ variable "ws_connections_table" {
 
 variable "ws_management_api_url" {
   description = "Management API URL for pushing WebSocket messages"
-  type        = string
-  default     = ""
-}
-
-# KMS
-variable "kms_key_id" {
-  description = "KMS key ID for enclave envelope encryption (background mode)"
   type        = string
   default     = ""
 }

@@ -1,7 +1,7 @@
 # =============================================================================
-# EC2 Module - Nitro Enclave Instances
+# EC2 Module - Application Instances
 # =============================================================================
-# Creates EC2 instances with Nitro Enclave support for secure processing.
+# Creates EC2 instances for FastAPI backend + OpenClaw gateway.
 # Uses Auto Scaling Group for high availability and rolling deployments.
 # =============================================================================
 
@@ -77,11 +77,6 @@ resource "aws_launch_template" "main" {
     name = var.instance_profile_name
   }
 
-  # Enable Nitro Enclaves
-  enclave_options {
-    enabled = true
-  }
-
   # Network configuration
   network_interfaces {
     associate_public_ip_address = false
@@ -108,10 +103,8 @@ resource "aws_launch_template" "main" {
     aws_region            = var.aws_region
     frontend_url          = var.frontend_url
     town_frontend_url     = var.town_frontend_url
-    enclave_bucket_name   = var.enclave_bucket_name
     ws_connections_table  = var.ws_connections_table
     ws_management_api_url = var.ws_management_api_url
-    kms_key_id            = var.kms_key_id
   }))
 
   # Metadata options (IMDSv2 required for security)
@@ -153,9 +146,8 @@ resource "aws_autoscaling_group" "main" {
   desired_capacity = var.desired_count
 
   # Health check
-  # Grace period extended for EIF build (4GB EIF takes ~15 min to build)
   health_check_type         = "ELB"
-  health_check_grace_period = 1200
+  health_check_grace_period = 300
 
   # Launch template
   launch_template {
@@ -169,8 +161,7 @@ resource "aws_autoscaling_group" "main" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 50
-      # Instance warmup extended for EIF build (4GB EIF takes ~15 min)
-      instance_warmup = 900
+      instance_warmup = 300
     }
     triggers = ["launch_template"]
   }

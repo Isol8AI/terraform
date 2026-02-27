@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# EC2 User Data Script - Isol8 Backend with Nitro Enclave
+# EC2 User Data Script - Isol8 Backend with OpenClaw Gateway
 # =============================================================================
 set -euo pipefail
 
@@ -11,10 +11,8 @@ SECRETS_ARN_PREFIX="${secrets_arn_prefix}"
 REGION="${aws_region}"
 FRONTEND_URL="${frontend_url}"
 TOWN_FRONTEND_URL="${town_frontend_url}"
-ENCLAVE_BUCKET="${enclave_bucket_name}"
 WS_CONNECTIONS_TABLE="${ws_connections_table}"
 WS_MANAGEMENT_API_URL="${ws_management_api_url}"
-KMS_KEY_ID="${kms_key_id}"
 
 # Logging
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -39,143 +37,15 @@ systemctl enable docker
 systemctl start amazon-ssm-agent
 systemctl enable amazon-ssm-agent
 
-# Install Nitro CLI
-amazon-linux-extras install aws-nitro-enclaves-cli -y
-yum install -y aws-nitro-enclaves-cli-devel
-
-# Configure enclave allocator
-# 4GB EIF requires ~16GB RAM to run (4x EIF size)
-cat > /etc/nitro_enclaves/allocator.yaml << 'EOF'
----
-# 16GB memory for enclave (4GB EIF requires ~4x its size)
-memory_mib: 16384
-# 2 CPUs for enclave (leave 2 for parent on r5.xlarge)
-cpu_count: 2
-EOF
-
-# Start Nitro Enclave allocator
-systemctl start nitro-enclaves-allocator
-systemctl enable nitro-enclaves-allocator
-
-# Add ec2-user to docker and ne groups
+# Add ec2-user to docker group
 usermod -aG docker ec2-user
-usermod -aG ne ec2-user
 
 # -----------------------------------------------------------------------------
-# Download Enclave files from S3 (source + EIF if available)
+# Set up OpenClaw gateway workspace
 # -----------------------------------------------------------------------------
-ENCLAVE_DIR="/home/ec2-user/enclave"
-mkdir -p "$ENCLAVE_DIR"
-chown ec2-user:ec2-user "$ENCLAVE_DIR"
-
-if [ -n "$ENCLAVE_BUCKET" ]; then
-    echo "Downloading enclave source files from S3..."
-    aws s3 sync "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/source/" "$ENCLAVE_DIR/" --region "$REGION" || echo "No enclave source in S3 yet"
-
-    echo "Downloading enclave EIF from S3..."
-    aws s3 cp "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" "$ENCLAVE_DIR/enclave.eif" --region "$REGION" || echo "No EIF found in S3 - will build from source"
-
-    # Build EIF from source if it doesn't exist but Dockerfile does
-    # Note: S3 structure is source/enclave/ and source/agent/ (for OpenClaw submodule)
-    if [ ! -f "$ENCLAVE_DIR/enclave.eif" ] && [ -f "$ENCLAVE_DIR/enclave/Dockerfile.enclave" ]; then
-        echo "Building enclave EIF from source (this may take a few minutes)..."
-        cd "$ENCLAVE_DIR"
-        # Build context is current dir (contains enclave/ and agent/)
-        docker build -t isol8-enclave:latest -f enclave/Dockerfile.enclave .
-
-        # Set required environment variable for nitro-cli
-        export NITRO_CLI_ARTIFACTS=/var/lib/nitro_enclaves
-
-        nitro-cli build-enclave --docker-uri isol8-enclave:latest --output-file "$ENCLAVE_DIR/enclave.eif"
-        echo "EIF built successfully!"
-
-        # Upload the built EIF to S3 for future instances
-        aws s3 cp "$ENCLAVE_DIR/enclave.eif" "s3://$ENCLAVE_BUCKET/$ENVIRONMENT/enclave.eif" --region "$REGION" && \
-            echo "EIF uploaded to S3 for future instances" || \
-            echo "Could not upload EIF to S3 (non-fatal)"
-        cd /
-    fi
-
-    chown -R ec2-user:ec2-user "$ENCLAVE_DIR"
-
-    # Install parent-side Python dependencies
-    if [ -f "$ENCLAVE_DIR/enclave/requirements-parent.txt" ]; then
-        echo "Installing parent-side Python dependencies..."
-        python3 -m pip install -r "$ENCLAVE_DIR/enclave/requirements-parent.txt"
-    fi
-
-    # Create vsock-proxy systemd service (for enclave outbound HTTPS)
-    if [ -f "$ENCLAVE_DIR/enclave/vsock_proxy.py" ]; then
-        echo "Creating vsock-proxy systemd service..."
-        cat > /etc/systemd/system/vsock-proxy.service << 'EOFSERVICE'
-[Unit]
-Description=vsock Proxy for Nitro Enclave
-After=network.target nitro-enclaves-allocator.service
-
-[Service]
-Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/enclave
-ExecStart=/usr/bin/python3 /home/ec2-user/enclave/enclave/vsock_proxy.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOFSERVICE
-        systemctl daemon-reload
-        systemctl enable vsock-proxy
-        systemctl start vsock-proxy
-        echo "vsock-proxy service started"
-    fi
-
-    # Create enclave systemd service (runs the Nitro Enclave)
-    if [ -f "$ENCLAVE_DIR/enclave.eif" ]; then
-        echo "Creating nitro-enclave systemd service..."
-        cat > /etc/systemd/system/nitro-enclave.service << 'EOFSERVICE'
-[Unit]
-Description=Nitro Enclave for Isol8
-After=nitro-enclaves-allocator.service vsock-proxy.service
-Requires=nitro-enclaves-allocator.service
-
-[Service]
-Type=simple
-User=root
-ExecStartPre=-/usr/bin/nitro-cli terminate-enclave --all
-ExecStart=/usr/bin/nitro-cli run-enclave --eif-path /home/ec2-user/enclave/enclave.eif --cpu-count 2 --memory 16384 --debug-mode --attach-console
-ExecStop=/usr/bin/nitro-cli terminate-enclave --all
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOFSERVICE
-        systemctl daemon-reload
-        systemctl enable nitro-enclave
-        systemctl start nitro-enclave
-        echo "Nitro enclave service started"
-
-        # Wait for enclave to be ready (up to 2 minutes)
-        echo "Waiting for enclave to start..."
-        ENCLAVE_CID=""
-        for i in $(seq 1 24); do
-            ENCLAVE_CID=$(nitro-cli describe-enclaves 2>/dev/null | jq -r '.[0].EnclaveCID // empty')
-            if [ -n "$ENCLAVE_CID" ]; then
-                echo "Enclave started with CID: $ENCLAVE_CID (attempt $i)"
-                break
-            fi
-            echo "Waiting for enclave... (attempt $i/24)"
-            sleep 5
-        done
-
-        if [ -z "$ENCLAVE_CID" ]; then
-            echo "ERROR: Enclave failed to start within 2 minutes"
-            systemctl status nitro-enclave --no-pager || true
-        fi
-    else
-        echo "No enclave.eif found - will use MockEnclave"
-    fi
-fi
+echo "Setting up OpenClaw gateway workspace..."
+mkdir -p /var/lib/isol8/gateway-workspace
+chown ec2-user:ec2-user /var/lib/isol8/gateway-workspace
 
 # -----------------------------------------------------------------------------
 # Fetch secrets from Secrets Manager
@@ -226,30 +96,6 @@ BRAVE_API_KEY=$(aws secretsmanager get-secret-value \
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
-# Use real Nitro Enclave if EIF exists, otherwise fall back to mock
-# Get the enclave CID if enclave is running
-ENCLAVE_CID_VALUE=""
-if [ -f "/home/ec2-user/enclave/enclave.eif" ]; then
-    ENCLAVE_MODE_VALUE="nitro"
-    echo "EIF found - using real Nitro Enclave"
-    # Get the CID from the running enclave (retry if needed)
-    for i in $(seq 1 12); do
-        ENCLAVE_CID_VALUE=$(nitro-cli describe-enclaves 2>/dev/null | jq -r '.[0].EnclaveCID // empty')
-        if [ -n "$ENCLAVE_CID_VALUE" ]; then
-            echo "Enclave CID for .env: $ENCLAVE_CID_VALUE"
-            break
-        fi
-        echo "Waiting for enclave CID... ($i/12)"
-        sleep 5
-    done
-    if [ -z "$ENCLAVE_CID_VALUE" ]; then
-        echo "ERROR: Could not get enclave CID after 60s - container will fail to connect"
-    fi
-else
-    ENCLAVE_MODE_VALUE="mock"
-    echo "No EIF found - using MockEnclave"
-fi
-
 cat > /home/ec2-user/.env << EOF
 DATABASE_URL=$DATABASE_URL
 OM_METADATA_BACKEND=postgres
@@ -261,11 +107,9 @@ CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
 CORS_ORIGINS=$FRONTEND_URL,$TOWN_FRONTEND_URL
 ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
-ENCLAVE_MODE=$ENCLAVE_MODE_VALUE
-ENCLAVE_CID=$ENCLAVE_CID_VALUE
+GATEWAY_WORKSPACE=/var/lib/isol8/gateway-workspace
 WS_CONNECTIONS_TABLE=$WS_CONNECTIONS_TABLE
 WS_MANAGEMENT_API_URL=$WS_MANAGEMENT_API_URL
-KMS_KEY_ID=$KMS_KEY_ID
 AWS_REGION=$REGION
 AWS_DEFAULT_REGION=$REGION
 STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
@@ -305,8 +149,7 @@ RestartSec=5
 ExecStart=/usr/bin/docker run --rm \
     --name isol8 \
     --env-file /home/ec2-user/.env \
-    --device /dev/vsock \
-    --privileged \
+    -v /var/lib/isol8/gateway-workspace:/var/lib/isol8/gateway-workspace \
     --network=host \
     $ECR_REPO:latest
 
