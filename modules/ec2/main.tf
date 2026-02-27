@@ -1,7 +1,7 @@
 # =============================================================================
 # EC2 Module - Application Instances
 # =============================================================================
-# Creates EC2 instances for FastAPI backend + OpenClaw gateway.
+# Creates EC2 instances for FastAPI backend with per-user containers.
 # Uses Auto Scaling Group for high availability and rolling deployments.
 # =============================================================================
 
@@ -50,6 +50,18 @@ resource "aws_security_group" "ec2" {
     }
   }
 
+  # Allow inbound to per-user container port range from within VPC
+  dynamic "ingress" {
+    for_each = var.vpc_cidr != "" ? [1] : []
+    content {
+      description = "Per-user containers from VPC"
+      from_port   = 19000
+      to_port     = 19999
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
+    }
+  }
+
   # Allow all outbound (for HuggingFace API, etc.)
   egress {
     description = "Allow all outbound"
@@ -88,7 +100,7 @@ resource "aws_launch_template" "main" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size           = 30
+      volume_size           = 100
       volume_type           = "gp3"
       delete_on_termination = true
       encrypted             = true

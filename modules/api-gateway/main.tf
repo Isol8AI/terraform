@@ -5,7 +5,7 @@
 # This adds rate limiting, throttling, and a clean API endpoint.
 #
 # Architecture:
-#   Vercel → API Gateway → ALB → EC2 (FastAPI + OpenClaw Gateway)
+#   Vercel → API Gateway → ALB → EC2 (FastAPI + per-user containers)
 # =============================================================================
 
 # -----------------------------------------------------------------------------

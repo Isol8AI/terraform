@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# EC2 User Data Script - Isol8 Backend with OpenClaw Gateway
+# EC2 User Data Script - Isol8 Backend
 # =============================================================================
 set -euo pipefail
 
@@ -22,12 +22,7 @@ echo "Starting Isol8 backend setup..."
 # Install dependencies
 # -----------------------------------------------------------------------------
 yum update -y
-amazon-linux-extras install docker -y
-amazon-linux-extras install python3.8 -y
-yum install -y aws-cli jq gcc python38-devel libffi-devel openssl-devel
-
-# Upgrade pip for Python on host
-python3 -m pip install --upgrade pip
+yum install -y docker aws-cli jq
 
 # Start Docker
 systemctl start docker
@@ -41,11 +36,10 @@ systemctl enable amazon-ssm-agent
 usermod -aG docker ec2-user
 
 # -----------------------------------------------------------------------------
-# Set up OpenClaw gateway workspace
+# Set up per-user container workspace
 # -----------------------------------------------------------------------------
-echo "Setting up OpenClaw gateway workspace..."
-mkdir -p /var/lib/isol8/gateway-workspace
-chown ec2-user:ec2-user /var/lib/isol8/gateway-workspace
+mkdir -p /var/lib/isol8/containers
+chown ec2-user:ec2-user /var/lib/isol8/containers
 
 # -----------------------------------------------------------------------------
 # Fetch secrets from Secrets Manager
@@ -107,7 +101,6 @@ CLERK_WEBHOOK_SECRET=$CLERK_WEBHOOK_SECRET
 CORS_ORIGINS=$FRONTEND_URL,$TOWN_FRONTEND_URL
 ENVIRONMENT=$ENVIRONMENT
 DEBUG=false
-GATEWAY_WORKSPACE=/var/lib/isol8/gateway-workspace
 WS_CONNECTIONS_TABLE=$WS_CONNECTIONS_TABLE
 WS_MANAGEMENT_API_URL=$WS_MANAGEMENT_API_URL
 AWS_REGION=$REGION
@@ -115,20 +108,29 @@ AWS_DEFAULT_REGION=$REGION
 STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
 BRAVE_API_KEY=$BRAVE_API_KEY
+OPENCLAW_IMAGE=$OPENCLAW_IMAGE
 EOF
 
 chmod 600 /home/ec2-user/.env
 chown ec2-user:ec2-user /home/ec2-user/.env
 
 # -----------------------------------------------------------------------------
-# Login to ECR and pull image
+# Login to ECR and pull images
 # -----------------------------------------------------------------------------
-echo "Pulling container image..."
+echo "Pulling container images..."
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_REPO="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$PROJECT-backend"
 
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR_REPO"
 docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
+
+# Pull OpenClaw image for per-user containers
+OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
+echo "Pulling OpenClaw image ($OPENCLAW_IMAGE)..."
+docker pull "$OPENCLAW_IMAGE" || true
+
+# Pull alpine for config volume writes
+docker pull alpine:latest || true
 
 # -----------------------------------------------------------------------------
 # Start the application
@@ -149,7 +151,8 @@ RestartSec=5
 ExecStart=/usr/bin/docker run --rm \
     --name isol8 \
     --env-file /home/ec2-user/.env \
-    -v /var/lib/isol8/gateway-workspace:/var/lib/isol8/gateway-workspace \
+    -v /var/lib/isol8/containers:/var/lib/isol8/containers \
+    -v /var/run/docker.sock:/var/run/docker.sock \
     --network=host \
     $ECR_REPO:latest
 

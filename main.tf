@@ -4,7 +4,7 @@
 # This file wires together all modules for the Isol8 backend infrastructure.
 #
 # Architecture:
-#   Vercel (Frontend) → API Gateway → ALB → EC2 (FastAPI + OpenClaw Gateway)
+#   Vercel (Frontend) → API Gateway → ALB → EC2 (FastAPI + per-user containers)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
