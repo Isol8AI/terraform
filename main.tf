@@ -228,18 +228,6 @@ resource "aws_route53_record" "websocket" {
 }
 
 # -----------------------------------------------------------------------------
-# S3 Enclave bucket (removed from management, bucket still exists in AWS)
-# Delete manually from AWS console after emptying versioned objects.
-# -----------------------------------------------------------------------------
-removed {
-  from = module.s3_enclave
-
-  lifecycle {
-    destroy = false
-  }
-}
-
-# -----------------------------------------------------------------------------
 # EC2 Module
 # -----------------------------------------------------------------------------
 module "ec2" {
