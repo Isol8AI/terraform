@@ -178,7 +178,7 @@ resource "aws_autoscaling_group" "main" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 50
-      instance_warmup = 300
+      instance_warmup = 60
     }
     triggers = ["launch_template"]
   }
