@@ -166,6 +166,50 @@ resource "aws_iam_role_policy" "ec2_bedrock" {
   })
 }
 
+# Container Execution Role (Bedrock-only, assumed by EC2 via STS)
+resource "aws_iam_role" "container_execution" {
+  name = "${var.project}-${var.environment}-container-execution-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { AWS = aws_iam_role.ec2.arn }
+    }]
+  })
+  tags = { Name = "${var.project}-${var.environment}-container-execution-role" }
+}
+
+resource "aws_iam_role_policy" "container_bedrock" {
+  name = "bedrock-access"
+  role = aws_iam_role.container_execution.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
+      Resource = [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*",
+        "arn:aws:bedrock:*:*:inference-profile/*",
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ec2_sts_assume" {
+  name = "sts-assume-container-role"
+  role = aws_iam_role.ec2.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = aws_iam_role.container_execution.arn
+    }]
+  })
+}
+
 # EC2 Policy - SSM access (for GitHub Actions deployments via SSM)
 resource "aws_iam_role_policy" "ec2_ssm" {
   name = "ssm-access"

@@ -132,3 +132,9 @@ variable "stripe_meter_id" {
   type        = string
   default     = ""
 }
+
+variable "container_execution_role_arn" {
+  description = "IAM role ARN for container Bedrock access (STS AssumeRole)"
+  type        = string
+  default     = ""
+}

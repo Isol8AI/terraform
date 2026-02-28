@@ -26,3 +26,8 @@ output "github_actions_role_arn" {
   description = "GitHub Actions IAM role ARN"
   value       = length(aws_iam_role.github_actions) > 0 ? aws_iam_role.github_actions[0].arn : ""
 }
+
+output "container_execution_role_arn" {
+  description = "IAM role ARN for container Bedrock access (assumed via STS)"
+  value       = aws_iam_role.container_execution.arn
+}
