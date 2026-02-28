@@ -29,6 +29,12 @@ clerk_jwks_url = "https://clerk.isol8.co/.well-known/jwks.json"
 github_org   = "Isol8AI"
 github_repos = ["backend", "terraform"]
 
+# Stripe billing (test mode)
+stripe_starter_fixed_price_id = "price_1T5f8qEfizkJ25sAAWOd8UYo"
+stripe_pro_fixed_price_id     = "price_1T5fAdEfizkJ25sA2n6bPqPW"
+stripe_metered_price_id       = "price_1T5f90EfizkJ25sAebYrGVyk"
+stripe_meter_id               = "mtr_test_61UF36IlRmFY2XJYU41EfizkJ25sA2T2"
+
 # =============================================================================
 # SENSITIVE VALUES - Set via environment variables, not in this file!
 # =============================================================================

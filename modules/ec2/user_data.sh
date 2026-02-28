@@ -110,6 +110,11 @@ AWS_REGION=$REGION
 AWS_DEFAULT_REGION=$REGION
 STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
+STRIPE_STARTER_FIXED_PRICE_ID=${stripe_starter_fixed_price_id}
+STRIPE_PRO_FIXED_PRICE_ID=${stripe_pro_fixed_price_id}
+STRIPE_METERED_PRICE_ID=${stripe_metered_price_id}
+STRIPE_METER_ID=${stripe_meter_id}
+FRONTEND_URL=$FRONTEND_URL
 BRAVE_API_KEY=$BRAVE_API_KEY
 OPENCLAW_IMAGE=$OPENCLAW_IMAGE
 EOF
@@ -139,6 +144,9 @@ docker pull alpine:latest || true
 # -----------------------------------------------------------------------------
 echo "Starting application..."
 
+# Get host Docker group GID so the container can access the socket
+DOCKER_GID=$(getent group docker | cut -d: -f3)
+
 # Create systemd service
 cat > /etc/systemd/system/isol8.service << EOF
 [Unit]
@@ -155,6 +163,7 @@ ExecStart=/usr/bin/docker run --rm \
     --env-file /home/ec2-user/.env \
     -v /var/lib/isol8/containers:/var/lib/isol8/containers \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    --group-add $DOCKER_GID \
     --network=host \
     $ECR_REPO:latest
 

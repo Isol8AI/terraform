@@ -109,14 +109,18 @@ resource "aws_launch_template" "main" {
 
   # User data script
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    project               = var.project
-    environment           = var.environment
-    secrets_arn_prefix    = var.secrets_arn_prefix
-    aws_region            = var.aws_region
-    frontend_url          = var.frontend_url
-    town_frontend_url     = var.town_frontend_url
-    ws_connections_table  = var.ws_connections_table
-    ws_management_api_url = var.ws_management_api_url
+    project                       = var.project
+    environment                   = var.environment
+    secrets_arn_prefix            = var.secrets_arn_prefix
+    aws_region                    = var.aws_region
+    frontend_url                  = var.frontend_url
+    town_frontend_url             = var.town_frontend_url
+    ws_connections_table          = var.ws_connections_table
+    ws_management_api_url         = var.ws_management_api_url
+    stripe_starter_fixed_price_id = var.stripe_starter_fixed_price_id
+    stripe_pro_fixed_price_id     = var.stripe_pro_fixed_price_id
+    stripe_metered_price_id       = var.stripe_metered_price_id
+    stripe_meter_id               = var.stripe_meter_id
   }))
 
   # Metadata options (IMDSv2 required for security)
