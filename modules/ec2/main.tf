@@ -121,6 +121,7 @@ resource "aws_launch_template" "main" {
     stripe_pro_fixed_price_id     = var.stripe_pro_fixed_price_id
     stripe_metered_price_id       = var.stripe_metered_price_id
     stripe_meter_id               = var.stripe_meter_id
+    container_execution_role_arn   = var.container_execution_role_arn
   }))
 
   # Metadata options (IMDSv2 required for security)
