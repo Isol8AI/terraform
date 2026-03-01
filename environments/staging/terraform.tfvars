@@ -16,8 +16,8 @@ ec2_min_count     = 0
 ec2_max_count     = 0
 
 # Domain
-domain_name  = "api-staging.isol8.co"
-root_domain  = "isol8.co"
+domain_name       = "api-staging.isol8.co"
+root_domain       = "isol8.co"
 frontend_url      = "https://staging.isol8.co"
 town_frontend_url = "https://staging.town.isol8.co"
 
