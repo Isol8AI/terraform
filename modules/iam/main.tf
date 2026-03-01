@@ -210,6 +210,219 @@ resource "aws_iam_role_policy" "ec2_sts_assume" {
   })
 }
 
+# --- ECS Task Execution Role (Fargate pulls images, writes logs) ---
+
+resource "aws_iam_role" "ecs_task_execution" {
+  name = "${var.project}-${var.environment}-ecs-task-execution"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "ecs-tasks.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = { Environment = var.environment }
+}
+
+resource "aws_iam_role_policy" "ecs_task_execution_policy" {
+  name = "ecs-task-execution"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# --- ECS Task Role (OpenClaw container runtime permissions) ---
+
+resource "aws_iam_role" "ecs_task" {
+  name = "${var.project}-${var.environment}-ecs-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "ecs-tasks.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = { Environment = var.environment }
+}
+
+resource "aws_iam_role_policy" "ecs_task_bedrock" {
+  name = "bedrock-access"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*",
+          "arn:aws:bedrock:*:*:inference-profile/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_s3_config" {
+  name = "s3-config-read"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${var.openclaw_config_bucket_arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_ssm" {
+  name = "ssm-exec"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_efs" {
+  name = "efs-mount"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite"
+        ]
+        Resource = var.efs_file_system_arn
+      }
+    ]
+  })
+}
+
+# EC2 Policy - ECS management (for managing per-user Fargate tasks)
+resource "aws_iam_role_policy" "ec2_ecs_management" {
+  name = "ecs-management"
+  role = aws_iam_role.ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:CreateService",
+          "ecs:UpdateService",
+          "ecs:DeleteService",
+          "ecs:DescribeServices",
+          "ecs:DescribeTasks",
+          "ecs:ListServices",
+          "ecs:ListTasks",
+          "ecs:ExecuteCommand"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "ecs:cluster" = var.ecs_cluster_arn
+          }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = [
+          aws_iam_role.ecs_task_execution.arn,
+          aws_iam_role.ecs_task.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.openclaw_config_bucket_arn,
+          "${var.openclaw_config_bucket_arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite"
+        ]
+        Resource = var.efs_file_system_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "servicediscovery:DiscoverInstances"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # EC2 Policy - SSM access (for GitHub Actions deployments via SSM)
 resource "aws_iam_role_policy" "ec2_ssm" {
   name = "ssm-access"

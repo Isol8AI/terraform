@@ -31,3 +31,11 @@ output "container_execution_role_arn" {
   description = "IAM role ARN for container Bedrock access (assumed via STS)"
   value       = aws_iam_role.container_execution.arn
 }
+
+output "ecs_task_execution_role_arn" {
+  value = aws_iam_role.ecs_task_execution.arn
+}
+
+output "ecs_task_role_arn" {
+  value = aws_iam_role.ecs_task.arn
+}

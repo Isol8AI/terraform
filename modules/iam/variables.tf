@@ -45,3 +45,34 @@ variable "ws_connections_table_arn" {
   type        = string
   default     = ""
 }
+
+variable "ecs_cluster_arn" {
+  type    = string
+  default = ""
+}
+
+variable "ecs_task_definition_arn" {
+  type    = string
+  default = ""
+}
+
+variable "efs_file_system_arn" {
+  type    = string
+  default = ""
+}
+
+variable "openclaw_config_bucket_arn" {
+  description = "S3 bucket ARN for openclaw config storage"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_map_namespace_arn" {
+  type    = string
+  default = ""
+}
+
+variable "cloud_map_service_arn" {
+  type    = string
+  default = ""
+}
