@@ -1,7 +1,8 @@
 # =============================================================================
 # EC2 Module - Application Instances
 # =============================================================================
-# Creates EC2 instances for FastAPI backend with per-user containers.
+# Creates EC2 instances for FastAPI backend control plane.
+# User containers run on ECS Fargate; EC2 mounts EFS for workspace access.
 # Uses Auto Scaling Group for high availability and rolling deployments.
 # =============================================================================
 

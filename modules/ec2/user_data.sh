@@ -144,7 +144,12 @@ docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
 echo "Mounting EFS..."
 yum install -y amazon-efs-utils
 mkdir -p /mnt/efs
-mount -t efs -o tls ${efs_file_system_id}:/ /mnt/efs
+for i in 1 2 3 4 5; do
+  mount -t efs -o tls ${efs_file_system_id}:/ /mnt/efs && break
+  echo "EFS mount attempt $i failed, retrying in 10s..."
+  /bin/sleep 10
+done
+mountpoint -q /mnt/efs || { echo "FATAL: EFS mount failed after 5 attempts"; exit 1; }
 echo "${efs_file_system_id}:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
 
 # -----------------------------------------------------------------------------
