@@ -186,8 +186,8 @@ resource "aws_iam_role_policy" "container_bedrock" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
+      Effect = "Allow"
+      Action = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"]
       Resource = [
         "arn:aws:bedrock:*::foundation-model/*",
         "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*",
@@ -384,8 +384,8 @@ resource "aws_iam_role_policy" "ec2_ecs_management" {
         }
       },
       {
-        Effect   = "Allow"
-        Action   = "iam:PassRole"
+        Effect = "Allow"
+        Action = "iam:PassRole"
         Resource = [
           aws_iam_role.ecs_task_execution.arn,
           aws_iam_role.ecs_task.arn
