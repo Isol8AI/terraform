@@ -87,9 +87,6 @@ BRAVE_API_KEY=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}brave_api_key" \
     --query 'SecretString' --output text 2>/dev/null || echo "")
 
-# OpenClaw image for per-user containers
-OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
-
 # -----------------------------------------------------------------------------
 # Create environment file
 # -----------------------------------------------------------------------------
@@ -116,8 +113,16 @@ STRIPE_METERED_PRICE_ID=${stripe_metered_price_id}
 STRIPE_METER_ID=${stripe_meter_id}
 FRONTEND_URL=$FRONTEND_URL
 BRAVE_API_KEY=$BRAVE_API_KEY
-OPENCLAW_IMAGE=$OPENCLAW_IMAGE
 CONTAINER_EXECUTION_ROLE_ARN=${container_execution_role_arn}
+ECS_CLUSTER_ARN=${ecs_cluster_arn}
+ECS_TASK_DEFINITION=${ecs_task_definition}
+ECS_SUBNETS=${ecs_subnets}
+ECS_SECURITY_GROUP_ID=${ecs_security_group_id}
+EFS_MOUNT_PATH=/mnt/efs
+S3_CONFIG_BUCKET=${s3_config_bucket}
+CLOUD_MAP_NAMESPACE_ID=${cloud_map_namespace_id}
+CLOUD_MAP_SERVICE_ID=${cloud_map_service_id}
+CLOUD_MAP_SERVICE_ARN=${cloud_map_service_arn}
 EOF
 
 chmod 600 /home/ec2-user/.env
@@ -133,20 +138,19 @@ ECR_REPO="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$PROJECT-backend"
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR_REPO"
 docker pull "$ECR_REPO:latest" || docker pull "$ECR_REPO:$ENVIRONMENT" || true
 
-# Pull OpenClaw image for per-user containers
-echo "Pulling OpenClaw image ($OPENCLAW_IMAGE)..."
-docker pull "$OPENCLAW_IMAGE" || true
-
-# Pull alpine for config volume writes
-docker pull alpine:latest || true
+# -----------------------------------------------------------------------------
+# Mount EFS for OpenClaw workspaces
+# -----------------------------------------------------------------------------
+echo "Mounting EFS..."
+yum install -y amazon-efs-utils
+mkdir -p /mnt/efs
+mount -t efs -o tls ${efs_file_system_id}:/ /mnt/efs
+echo "${efs_file_system_id}:/ /mnt/efs efs _netdev,tls 0 0" >> /etc/fstab
 
 # -----------------------------------------------------------------------------
 # Start the application
 # -----------------------------------------------------------------------------
 echo "Starting application..."
-
-# Get host Docker group GID so the container can access the socket
-DOCKER_GID=$(getent group docker | cut -d: -f3)
 
 # Create systemd service
 cat > /etc/systemd/system/isol8.service << EOF
@@ -163,8 +167,7 @@ ExecStart=/usr/bin/docker run --rm \
     --name isol8 \
     --env-file /home/ec2-user/.env \
     -v /var/lib/isol8/containers:/var/lib/isol8/containers \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    --group-add $DOCKER_GID \
+    -v /mnt/efs:/mnt/efs \
     --network=host \
     $ECR_REPO:latest
 

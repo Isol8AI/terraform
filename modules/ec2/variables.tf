@@ -138,3 +138,58 @@ variable "container_execution_role_arn" {
   type        = string
   default     = ""
 }
+
+# ECS Fargate integration
+variable "ecs_cluster_arn" {
+  description = "ECS cluster ARN for Fargate service management"
+  type        = string
+  default     = ""
+}
+
+variable "ecs_task_definition" {
+  description = "ECS task definition family name"
+  type        = string
+  default     = ""
+}
+
+variable "ecs_subnets" {
+  description = "Comma-separated subnet IDs for ECS tasks"
+  type        = string
+  default     = ""
+}
+
+variable "ecs_security_group_id" {
+  description = "Security group ID for ECS Fargate tasks"
+  type        = string
+  default     = ""
+}
+
+variable "efs_file_system_id" {
+  description = "EFS file system ID for workspace storage"
+  type        = string
+  default     = ""
+}
+
+variable "s3_config_bucket" {
+  description = "S3 bucket name for OpenClaw config storage"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_map_namespace_id" {
+  description = "Cloud Map namespace ID for service discovery"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_map_service_id" {
+  description = "Cloud Map service ID for OpenClaw"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_map_service_arn" {
+  description = "Cloud Map service ARN for OpenClaw"
+  type        = string
+  default     = ""
+}

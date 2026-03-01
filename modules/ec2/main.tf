@@ -50,18 +50,6 @@ resource "aws_security_group" "ec2" {
     }
   }
 
-  # Allow inbound to per-user container port range from within VPC
-  dynamic "ingress" {
-    for_each = var.vpc_cidr != "" ? [1] : []
-    content {
-      description = "Per-user containers from VPC"
-      from_port   = 19000
-      to_port     = 19999
-      protocol    = "tcp"
-      cidr_blocks = [var.vpc_cidr]
-    }
-  }
-
   # Allow all outbound (for HuggingFace API, etc.)
   egress {
     description = "Allow all outbound"
@@ -121,14 +109,23 @@ resource "aws_launch_template" "main" {
     stripe_pro_fixed_price_id     = var.stripe_pro_fixed_price_id
     stripe_metered_price_id       = var.stripe_metered_price_id
     stripe_meter_id               = var.stripe_meter_id
-    container_execution_role_arn   = var.container_execution_role_arn
+    container_execution_role_arn  = var.container_execution_role_arn
+    ecs_cluster_arn               = var.ecs_cluster_arn
+    ecs_task_definition           = var.ecs_task_definition
+    ecs_subnets                   = var.ecs_subnets
+    ecs_security_group_id         = var.ecs_security_group_id
+    efs_file_system_id            = var.efs_file_system_id
+    s3_config_bucket              = var.s3_config_bucket
+    cloud_map_namespace_id        = var.cloud_map_namespace_id
+    cloud_map_service_id          = var.cloud_map_service_id
+    cloud_map_service_arn         = var.cloud_map_service_arn
   }))
 
   # Metadata options (IMDSv2 required for security)
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2  # Allow Docker bridge containers to reach IMDS for credentials
+    http_put_response_hop_limit = 2 # Allow Docker bridge containers to reach IMDS for credentials
   }
 
   tag_specifications {
@@ -178,7 +175,7 @@ resource "aws_autoscaling_group" "main" {
     strategy = "Rolling"
     preferences {
       min_healthy_percentage = 50
-      instance_warmup = 60
+      instance_warmup        = 60
     }
     triggers = ["launch_template"]
   }
