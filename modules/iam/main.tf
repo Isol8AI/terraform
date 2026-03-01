@@ -311,6 +311,11 @@ resource "aws_iam_role_policy" "ecs_task_s3_config" {
         Effect   = "Allow"
         Action   = ["s3:GetObject"]
         Resource = "${var.openclaw_config_bucket_arn}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+        Resource = var.kms_key_arn
       }
     ]
   })
@@ -412,13 +417,6 @@ resource "aws_iam_role_policy" "ec2_ecs_management" {
         ]
         Resource = var.efs_file_system_arn
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "servicediscovery:DiscoverInstances"
-        ]
-        Resource = "*"
-      }
     ]
   })
 }

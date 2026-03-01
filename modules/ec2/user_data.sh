@@ -36,12 +36,6 @@ systemctl enable amazon-ssm-agent
 usermod -aG docker ec2-user
 
 # -----------------------------------------------------------------------------
-# Set up per-user container workspace
-# -----------------------------------------------------------------------------
-mkdir -p /var/lib/isol8/containers
-chown ec2-user:ec2-user /var/lib/isol8/containers
-
-# -----------------------------------------------------------------------------
 # Fetch secrets from Secrets Manager
 # -----------------------------------------------------------------------------
 echo "Fetching secrets from region: $REGION"
@@ -171,7 +165,6 @@ RestartSec=5
 ExecStart=/usr/bin/docker run --rm \
     --name isol8 \
     --env-file /home/ec2-user/.env \
-    -v /var/lib/isol8/containers:/var/lib/isol8/containers \
     -v /mnt/efs:/mnt/efs \
     --network=host \
     $ECR_REPO:latest
