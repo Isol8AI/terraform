@@ -422,7 +422,8 @@ resource "aws_iam_role_policy" "ec2_ecs_management" {
         Action = [
           "elasticfilesystem:CreateAccessPoint",
           "elasticfilesystem:DeleteAccessPoint",
-          "elasticfilesystem:DescribeAccessPoints"
+          "elasticfilesystem:DescribeAccessPoints",
+          "elasticfilesystem:TagResource"
         ]
         Resource = var.efs_file_system_arn
       },
