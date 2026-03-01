@@ -817,6 +817,30 @@ resource "aws_iam_role_policy" "github_terraform_infra" {
           "iam:UntagRole",
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "ECSFull"
+        Effect = "Allow"
+        Action = [
+          "ecs:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ServiceDiscoveryFull"
+        Effect = "Allow"
+        Action = [
+          "servicediscovery:*",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EFSFull"
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:*",
+        ]
+        Resource = "*"
       }
     ]
   })
