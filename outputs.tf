@@ -92,3 +92,26 @@ output "ws_management_api_url" {
   description = "Management API URL for backend to push WebSocket messages"
   value       = module.websocket_api.management_api_url
 }
+
+# -----------------------------------------------------------------------------
+# ECS Fargate Outputs
+# -----------------------------------------------------------------------------
+output "ecs_cluster_arn" {
+  description = "ECS Fargate cluster ARN"
+  value       = module.ecs.cluster_arn
+}
+
+output "efs_file_system_id" {
+  description = "EFS file system ID for OpenClaw workspaces"
+  value       = module.efs.file_system_id
+}
+
+output "openclaw_config_bucket" {
+  description = "S3 bucket for OpenClaw configuration"
+  value       = aws_s3_bucket.openclaw_configs.id
+}
+
+output "cloud_map_service_arn" {
+  description = "Cloud Map service ARN for OpenClaw discovery"
+  value       = module.ecs.cloud_map_service_arn
+}

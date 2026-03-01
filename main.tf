@@ -57,16 +57,86 @@ module "secrets" {
 
   # Secrets to store (encrypted with KMS key)
   secrets = {
-    database_url           = local.database_url
-    openmemory_url         = local.openmemory_url
-    huggingface_token      = var.huggingface_token
-    clerk_issuer           = var.clerk_issuer
-    clerk_secret_key       = var.clerk_secret_key
-    clerk_webhook_secret   = var.clerk_webhook_secret
-    stripe_secret_key      = var.stripe_secret_key
-    stripe_webhook_secret  = var.stripe_webhook_secret
-    brave_api_key          = var.brave_api_key
+    database_url          = local.database_url
+    openmemory_url        = local.openmemory_url
+    huggingface_token     = var.huggingface_token
+    clerk_issuer          = var.clerk_issuer
+    clerk_secret_key      = var.clerk_secret_key
+    clerk_webhook_secret  = var.clerk_webhook_secret
+    stripe_secret_key     = var.stripe_secret_key
+    stripe_webhook_secret = var.stripe_webhook_secret
+    brave_api_key         = var.brave_api_key
   }
+}
+
+# --- S3 bucket for OpenClaw configuration ---
+
+resource "aws_s3_bucket" "openclaw_configs" {
+  bucket = "isol8-${var.environment}-openclaw-configs"
+
+  tags = {
+    Name        = "isol8-${var.environment}-openclaw-configs"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "openclaw_configs" {
+  bucket = aws_s3_bucket.openclaw_configs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "openclaw_configs" {
+  bucket = aws_s3_bucket.openclaw_configs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = module.kms.key_arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "openclaw_configs" {
+  bucket                  = aws_s3_bucket.openclaw_configs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# -----------------------------------------------------------------------------
+# EFS Module (Shared storage for OpenClaw workspaces)
+# -----------------------------------------------------------------------------
+module "efs" {
+  source = "./modules/efs"
+
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  kms_key_arn        = module.kms.key_arn
+
+  allowed_security_group_ids = [
+    module.ec2.security_group_id,
+    module.ecs.fargate_security_group_id,
+  ]
+}
+
+# -----------------------------------------------------------------------------
+# ECS Module (Fargate cluster for per-user OpenClaw gateways)
+# -----------------------------------------------------------------------------
+module "ecs" {
+  source = "./modules/ecs"
+
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+
+  control_plane_security_group_id = module.ec2.security_group_id
+  efs_file_system_id              = module.efs.file_system_id
+  efs_access_point_id             = module.efs.access_point_id
+  task_execution_role_arn         = module.iam.ecs_task_execution_role_arn
+  task_role_arn                   = module.iam.ecs_task_role_arn
 }
 
 # -----------------------------------------------------------------------------
@@ -87,6 +157,12 @@ module "iam" {
   # WebSocket permissions
   websocket_api_arn        = module.websocket_api.execution_arn
   ws_connections_table_arn = module.websocket_api.connections_table_arn
+
+  # ECS/EFS/S3 permissions
+  ecs_cluster_arn            = module.ecs.cluster_arn
+  ecs_task_definition_arn    = module.ecs.task_definition_arn
+  efs_file_system_arn        = module.efs.file_system_arn
+  openclaw_config_bucket_arn = aws_s3_bucket.openclaw_configs.arn
 }
 
 # -----------------------------------------------------------------------------
@@ -275,4 +351,15 @@ module "ec2" {
 
   # Container credential vending
   container_execution_role_arn = module.iam.container_execution_role_arn
+
+  # ECS Fargate integration
+  ecs_cluster_arn        = module.ecs.cluster_arn
+  ecs_task_definition    = module.ecs.task_definition_family
+  ecs_subnets            = join(",", module.vpc.private_subnet_ids)
+  ecs_security_group_id  = module.ecs.fargate_security_group_id
+  efs_file_system_id     = module.efs.file_system_id
+  s3_config_bucket       = aws_s3_bucket.openclaw_configs.id
+  cloud_map_namespace_id = module.ecs.cloud_map_namespace_id
+  cloud_map_service_id   = module.ecs.cloud_map_service_id
+  cloud_map_service_arn  = module.ecs.cloud_map_service_arn
 }
