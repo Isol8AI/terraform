@@ -55,13 +55,13 @@ variable "openclaw_image" {
 }
 
 variable "task_cpu" {
-  description = "CPU units for the Fargate task (512 = 0.5 vCPU)"
+  description = "CPU units for the Fargate task (1024 = 1 vCPU)"
   type        = number
-  default     = 512
+  default     = 1024
 }
 
 variable "task_memory" {
-  description = "Memory in MiB for the Fargate task (1024 = 1 GB)"
+  description = "Memory in MiB for the Fargate task (2048 = 2 GB)"
   type        = number
-  default     = 1024
+  default     = 2048
 }
