@@ -154,9 +154,12 @@ resource "aws_ecs_task_definition" "openclaw" {
       # Config is written to EFS by the EC2 control plane and mounted
       # into the container at /home/node/.openclaw via per-user access
       # points. No inline config generation needed.
-      user = "1000:1000"
+      user             = "1000:1000"
       workingDirectory = "/home/node"
-      command = ["node", "/app/openclaw.mjs", "gateway", "--port", "18789", "--bind", "lan"]
+      command = [
+        "sh", "-c",
+        "export NPM_CONFIG_PREFIX=/home/node/.npm-global && export PATH=$NPM_CONFIG_PREFIX/bin:$PATH && npm i -g --ignore-scripts mcporter 2>/dev/null; exec node /app/openclaw.mjs gateway --port 18789 --bind lan"
+      ]
 
       portMappings = [
         {
@@ -179,6 +182,14 @@ resource "aws_ecs_task_definition" "openclaw" {
         {
           name  = "HOME"
           value = "/home/node"
+        },
+        {
+          name  = "NPM_CONFIG_PREFIX"
+          value = "/home/node/.npm-global"
+        },
+        {
+          name  = "PATH"
+          value = "/home/node/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         },
         {
           name  = "AWS_REGION"
