@@ -193,3 +193,8 @@ variable "cloud_map_service_arn" {
   type        = string
   default     = ""
 }
+
+variable "domain_name" {
+  description = "API domain name (e.g., api-dev.isol8.co) for proxy URL"
+  type        = string
+}

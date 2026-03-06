@@ -65,7 +65,7 @@ module "secrets" {
     clerk_webhook_secret  = var.clerk_webhook_secret
     stripe_secret_key     = var.stripe_secret_key
     stripe_webhook_secret = var.stripe_webhook_secret
-    brave_api_key         = var.brave_api_key
+    perplexity_api_key    = var.perplexity_api_key
   }
 }
 
@@ -362,4 +362,5 @@ module "ec2" {
   cloud_map_namespace_id = module.ecs.cloud_map_namespace_id
   cloud_map_service_id   = module.ecs.cloud_map_service_id
   cloud_map_service_arn  = module.ecs.cloud_map_service_arn
+  domain_name            = var.domain_name
 }

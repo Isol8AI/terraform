@@ -148,8 +148,8 @@ variable "stripe_webhook_secret" {
   default     = ""
 }
 
-variable "brave_api_key" {
-  description = "Brave Search API key (for OpenClaw web search tool)"
+variable "perplexity_api_key" {
+  description = "Perplexity API key (proxied web search for user containers)"
   type        = string
   sensitive   = true
   default     = ""

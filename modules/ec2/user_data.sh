@@ -76,9 +76,9 @@ STRIPE_WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
     --secret-id "$${SECRETS_ARN_PREFIX}stripe_webhook_secret" \
     --query 'SecretString' --output text 2>/dev/null || echo "")
 
-BRAVE_API_KEY=$(aws secretsmanager get-secret-value \
+PERPLEXITY_API_KEY=$(aws secretsmanager get-secret-value \
     --region "$REGION" \
-    --secret-id "$${SECRETS_ARN_PREFIX}brave_api_key" \
+    --secret-id "$${SECRETS_ARN_PREFIX}perplexity_api_key" \
     --query 'SecretString' --output text 2>/dev/null || echo "")
 
 # -----------------------------------------------------------------------------
@@ -106,7 +106,8 @@ STRIPE_PRO_FIXED_PRICE_ID=${stripe_pro_fixed_price_id}
 STRIPE_METERED_PRICE_ID=${stripe_metered_price_id}
 STRIPE_METER_ID=${stripe_meter_id}
 FRONTEND_URL=$FRONTEND_URL
-BRAVE_API_KEY=$BRAVE_API_KEY
+PERPLEXITY_API_KEY=$PERPLEXITY_API_KEY
+PROXY_BASE_URL=https://${domain_name}/api/v1/proxy
 CONTAINER_EXECUTION_ROLE_ARN=${container_execution_role_arn}
 ECS_CLUSTER_ARN=${ecs_cluster_arn}
 ECS_TASK_DEFINITION=${ecs_task_definition}
